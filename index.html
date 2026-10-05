@@ -1,0 +1,1465 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Retro-Timer zum Hinlegen. Hochnehmen, wenn du fertig bist.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>SlappyTimer App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#000;
+  --panel:#0c0a14;
+  --line:#2b2444;
+  --text:#f8f8f8;
+  --dim:#8c86aa;
+  --yellow:#f8b800;
+  --yellow-d:#ac7c00;
+  --green:#00b800;
+  --green-d:#006800;
+  --cyan:#3cbcfc;
+  --mood:#3cbcfc;
+  --font:'Press Start 2P',ui-monospace,'Courier New',monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#000;--panel:#0c0a14;--line:#2b2444;--text:#f8f8f8;--dim:#8c86aa}
+}
+:root[data-theme="dark"]{--bg:#000;--panel:#0c0a14;--line:#2b2444;--text:#f8f8f8;--dim:#8c86aa}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:var(--font);min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font-family:var(--font);cursor:pointer;-webkit-appearance:none;appearance:none;border-radius:0}
+.app{max-width:480px;margin:0 auto;min-height:100dvh;padding:12px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;position:relative}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px;line-height:1.4;color:var(--dim);transition:opacity 1.2s}
+.logo{font-size:11px;color:var(--yellow);text-shadow:2px 2px 0 #a83800;letter-spacing:1px;white-space:nowrap}
+.logo b{color:var(--text);font-weight:400;text-shadow:2px 2px 0 #3a2a6a}
+.mood{color:var(--mood);text-align:center;flex:1;transition:color .6s}
+.opt{font-size:8px;background:none;border:0;color:var(--dim);padding:8px 6px;box-shadow:inset 0 0 0 2px var(--line)}
+.stage{display:grid;place-items:center;padding:2px 0;transition:filter 1.2s,transform 2s}
+#ring{width:min(84vw,360px,46dvh);aspect-ratio:1;height:auto;image-rendering:pixelated;display:block}
+.bubble{position:relative;margin:6px 6px 0;padding:10px 12px;min-height:54px;background:var(--panel);font-size:11px;line-height:1.7;text-align:center;
+  box-shadow:0 -3px 0 0 var(--line),0 3px 0 0 var(--line),-3px 0 0 0 var(--line),3px 0 0 0 var(--line);transition:opacity 1.2s;display:flex;align-items:center;justify-content:center}
+.bubble.big{font-size:18px;color:var(--yellow);text-shadow:2px 2px 0 #a83800}
+.bubble::before{content:'';position:absolute;left:calc(50% - 6px);top:-6px;width:12px;height:3px;background:var(--line)}
+.bubble::after{content:'';position:absolute;left:calc(50% - 3px);top:-9px;width:6px;height:3px;background:var(--line)}
+.time{font-size:clamp(28px,10vw,40px);text-align:center;letter-spacing:2px;text-shadow:3px 3px 0 #2e2258;transition:opacity 1.2s;margin-top:4px}
+.sub{font-size:8px;line-height:1.8;text-align:center;color:var(--dim);min-height:15px;transition:opacity 1.2s}
+.hist{display:flex;justify-content:center;gap:6px;min-height:12px;transition:opacity 1.2s}
+.hist i{width:12px;height:12px;display:block;background:var(--line)}
+.hist i.w{background:var(--green);box-shadow:inset -2px -2px 0 var(--green-d)}
+.hist i.f{background:#e40058;box-shadow:inset -2px -2px 0 #880030}
+.hist i.t{opacity:.45}
+.panel{display:none;flex-direction:column;gap:10px;margin-top:auto;transition:opacity 1.2s}
+.panel.on{display:flex}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.chip{font-size:10px;padding:12px 0;background:var(--panel);color:var(--dim);border:0;box-shadow:inset 0 0 0 3px var(--line)}
+.chip.on{background:var(--yellow);color:#000;box-shadow:inset -3px -3px 0 var(--yellow-d)}
+.btn{font-size:14px;padding:16px 12px;border:0;color:#000;background:var(--yellow);box-shadow:inset -4px -4px 0 var(--yellow-d),inset 4px 4px 0 #fce08c;
+  clip-path:polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px))}
+.btn:active{transform:translate(2px,2px);box-shadow:inset 4px 4px 0 var(--yellow-d)}
+.btn.big{font-size:16px;padding:20px 12px}
+.btn.green{background:var(--green);color:#fff;box-shadow:inset -4px -4px 0 var(--green-d),inset 4px 4px 0 #58d854}
+.btn.ghost{background:var(--panel);color:var(--text);box-shadow:inset 0 0 0 3px var(--line);font-size:10px;padding:14px 10px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.hint{font-size:8px;line-height:1.9;color:var(--dim);text-align:center;transition:opacity 1.2s}
+.app.dim .top,.app.dim .bubble,.app.dim .sub,.app.dim .hist,.app.dim .panel,.app.dim .hint{opacity:0}
+.app.dim .panel{pointer-events:none}
+.app.dim .time{opacity:.3}
+.app.dim .stage{filter:brightness(.55)}
+.app.noTime .time{opacity:0}
+.app.black>*{opacity:0!important;transition:opacity .3s}
+.scan{position:fixed;inset:0;pointer-events:none;z-index:5;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+.app.dim~.scan,.app.black~.scan{display:none}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:10;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sheet[hidden]{display:none}
+.sheet-in{max-width:480px;margin:0 auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+.sheet h2{font-size:11px;color:var(--yellow);margin:10px 0 0;font-weight:400;line-height:1.5}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.head h2{margin:0}
+.head .btn{flex:0 0 auto}
+.set{display:flex;flex-direction:column;gap:8px}
+.set>span{font-size:8px;color:var(--dim);line-height:1.7}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:64px;font-size:8px;padding:11px 4px;background:var(--panel);color:var(--dim);border:0;box-shadow:inset 0 0 0 3px var(--line)}
+.seg button.on{background:var(--cyan);color:#000;box-shadow:inset -3px -3px 0 #0878a8}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.grid3 button{font-size:8px;padding:12px 2px;background:var(--panel);color:var(--text);border:0;box-shadow:inset 0 0 0 3px var(--line);line-height:1.6}
+.grid3 button:active{background:var(--line)}
+.stats{font-size:9px;line-height:2.1}
+.stats span{color:var(--dim)}
+.live{font-size:8px;line-height:2;color:var(--cyan);white-space:pre-line}
+.modal{position:fixed;inset:0;z-index:12;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.modal-in{max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center;font-size:12px;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="logo">SLAPPY<b>TIMER</b></div>
+    <div class="mood" id="mood">LAUNE: NEUTRAL</div>
+    <button class="opt" id="optBtn" type="button">OPT</button>
+  </header>
+  <div class="stage" id="stage"><canvas id="ring" width="64" height="64" role="img" aria-label="LED-Ring mit Slappy"></canvas></div>
+  <div class="bubble" id="bubble" aria-live="polite"></div>
+  <div class="time" id="time">20:00</div>
+  <div class="sub" id="sub"></div>
+  <div class="hist" id="hist" role="img" aria-label="Letzte Runden"></div>
+
+  <section class="panel" data-for="idle">
+    <div class="chips" id="chips"></div>
+    <button class="btn big" id="startBtn" type="button">START</button>
+  </section>
+  <section class="panel" data-for="armed">
+    <button class="btn big green" id="goBtn" type="button">LOS</button>
+    <div class="row">
+      <button class="btn ghost" id="cancelBtn" type="button">ZURÜCK</button>
+      <button class="btn ghost" id="noSensorBtn" type="button">OHNE SENSOR</button>
+    </div>
+  </section>
+  <section class="panel" data-for="running timeup">
+    <button class="btn big green" id="doneBtn" type="button">FERTIG!</button>
+    <button class="btn ghost" id="abortBtn" type="button">ABBRECHEN</button>
+  </section>
+  <section class="panel" data-for="result">
+    <button class="btn big" id="againBtn" type="button">NOCHMAL</button>
+    <div class="row">
+      <button class="btn ghost" id="menuBtn" type="button">MENÜ</button>
+      <button class="btn ghost" id="undoBtn" type="button">UPS, WEITER</button>
+    </div>
+  </section>
+  <div class="hint" id="hint"></div>
+</div>
+<div class="scan" aria-hidden="true"></div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="head"><h2>OPTIONEN</h2><button class="btn ghost" id="closeBtn" type="button">ZURÜCK</button></div>
+    <div class="set"><span>Ladekreis</span><div class="seg" data-key="ring"><button data-v="fill" type="button">FÜLLEN</button><button data-v="drain" type="button">LEEREN</button></div></div>
+    <div class="set"><span>Lautstärke</span><div class="seg" data-key="vol"><button data-v="0" type="button">AUS</button><button data-v="1" type="button">LEISE</button><button data-v="2" type="button">MITTEL</button><button data-v="3" type="button">LAUT</button></div></div>
+    <div class="set"><span>Halbzeit-Pfiff</span><div class="seg" data-key="half"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+    <div class="set"><span>Endspurt ab 90 %</span><div class="seg" data-key="hurry"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+    <div class="set"><span>Letzte 10 Sekunden ticken</span><div class="seg" data-key="final10"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+    <div class="set"><span>Restzeit als Zahl zeigen</span><div class="seg" data-key="showTime"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+    <div class="set"><span>Sprechgeräusche in der Blase</span><div class="seg" data-key="talk"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+    <div class="set"><span>Schnelltest: 1 Minute dauert 1 Sekunde. Ändert die Laune, zählt nicht in der Statistik.</span><div class="seg" data-key="test"><button data-v="1" type="button">AN</button><button data-v="0" type="button">AUS</button></div></div>
+
+    <h2>KLANGTEST</h2>
+    <div class="set"><span>Laune</span><div class="seg" id="sbMood"></div></div>
+    <div class="grid3" id="sbEvents"></div>
+    <div class="set"><span>Stimme</span><div class="grid3" id="sbClips"></div></div>
+
+    <h2>SENSOR</h2>
+    <div class="live" id="live">Noch keine Daten.</div>
+
+    <h2>STATISTIK</h2>
+    <div class="stats" id="stats"></div>
+    <div class="row"><button class="btn ghost" id="moodReset" type="button">LAUNE NEU</button><button class="btn ghost" id="wipeBtn" type="button">ALLES LÖSCHEN</button></div>
+    <button class="btn ghost" id="installBtn" type="button" hidden>ALS APP INSTALLIEREN</button>
+    <div class="hint">SlappyTimer 0.1 · Prototyp für den Circuit Playground Bluefruit</div>
+  </div>
+</div>
+
+<div class="modal" id="away" hidden>
+  <div class="modal-in">
+    <div>Wieder da!<br>Fertig geworden?</div>
+    <button class="btn big green" id="awayWin" type="button">GESCHAFFT</button>
+    <button class="btn ghost" id="awayGo" type="button">WEITER</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   SlappyTimer – Handy-Prototyp für das spätere Gadget.
+   Alles, was später aufs Board soll, steht in CFG, MOODS und in den
+   Notenfolgen der Klänge (Schreibweise Note:Länge, z. B. C5:8 = Achtel).
+   ===================================================================== */
+
+const CFG = {
+  durations: [5, 10, 15, 20, 25, 30, 45, 60],
+  ledHours: [1, 2, 3, 4, 5, 7, 8, 9, 10, 11], // LED-Positionen wie auf dem Board (12 = USB, 6 = Akkustecker)
+  cpbPixel: [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],   // passende NeoPixel-Nummer am Board, im Uhrzeigersinn ab 1 Uhr (am Board prüfen)
+  flatDeg: 12,          // flach, wenn weniger geneigt
+  liftDeg: 28,          // hochgenommen, wenn stärker geneigt
+  calmMs2: 1.2,         // flach zählt nur, wenn es ruhig liegt
+  shakeMs2: 4.5,        // starker Ruck zählt auch als hochgenommen
+  flatHoldMs: 700,      // so lange ruhig liegen bis zum Countdown
+  liftHoldMs: 350,      // so lange gekippt bis "hochgenommen"
+  falseStartMs: 15000,  // früher hochgenommen = Fehlstart ohne Wertung
+  halfAt: 0.5,
+  hurryAt: 0.9,
+  nagEveryMs: 30000,    // Erinnerung nach Ablauf
+  dimAfterMs: 10000,    // danach Ruhemodus
+  wakeMs: 4000,         // kurz hell bei jedem LED-Schritt
+  sleepyAfterH: 36,     // so lange Pause = verschlafen
+  undoMs: 10000,        // so lange gibt es "UPS, WEITER"
+  crunch: 32            // 8-Bit-Körnung in Stufen, 0 = aus
+};
+
+const MOODS = {
+  neutral:     { label: 'NEUTRAL',     rgb: [60, 188, 252],  tempo: 1.00, minor: false, rate: 1.00, wave: 'p50', blip: 660 },
+  froh:        { label: 'FROH',        rgb: [248, 184, 0],   tempo: 1.06, minor: false, rate: 1.06, wave: 'p25', blip: 784 },
+  schelmisch:  { label: 'SCHELMISCH',  rgb: [228, 64, 228],  tempo: 1.16, minor: false, rate: 1.14, wave: 'p12', blip: 880, grace: true },
+  bedrueckt:   { label: 'BEDRÜCKT',    rgb: [104, 136, 252], tempo: 0.88, minor: true,  rate: 0.94, wave: 'p50', blip: 523, sigh: true, detune: -10 },
+  traurig:     { label: 'TRAURIG',     rgb: [32, 96, 248],   tempo: 0.74, minor: true,  rate: 0.86, wave: 'tri', blip: 440, sigh: true, detune: -18 },
+  verschlafen: { label: 'VERSCHLAFEN', rgb: [136, 88, 216],  tempo: 0.70, minor: false, rate: 0.84, wave: 'tri', blip: 392 }
+};
+const MOOD_KEYS = Object.keys(MOODS);
+
+const SAY = {
+  idle: {
+    neutral: ['Na? Eine Runde?', 'Wähl deine Zeit. Ich zähle mit.', 'Bereit, wenn du es bist.'],
+    froh: ['Letztes Mal geschafft!', 'Das wird wieder was.', 'Gute Laune hier drin!'],
+    schelmisch: ['Wetten, du schaffst es wieder?', 'Hehe. Noch eine Runde?', 'Wir zwei sind unschlagbar.'],
+    bedrueckt: ['Letztes Mal war knapp.', 'Neue Runde, neues Glück?', 'Komm, wir versuchen es.'],
+    traurig: ['Ich vermisse das Juhu ...', 'Nur eine kleine Runde?', 'Ich glaub an dich. Echt.'],
+    verschlafen: ['Zzz ... Oh! Da bist du ja!', 'Gähn ... Ich bin wach! Fast.']
+  },
+  poke: {
+    neutral: ['Hm?', 'Ja?'], froh: ['Hihi, das kitzelt!'], schelmisch: ['Hehehe!', 'Erwischt!'],
+    bedrueckt: ['Hm ...'], traurig: ['Ohh ...'], verschlafen: ['Gääähn.']
+  },
+  armed: 'Leg mich flach hin.',
+  armedManual: 'Hinlegen und LOS tippen.',
+  countAbort: 'Liegen lassen! Nochmal hinlegen.',
+  go: 'LOS!',
+  run: 'Hochnehmen, wenn du fertig bist.',
+  runManual: 'Tippe FERTIG, wenn du fertig bist.',
+  half: 'Halbzeit!',
+  hurry: 'Endspurt!',
+  falseStart: 'Fehlstart! Leg mich nochmal hin.',
+  falseStartManual: 'Fehlstart! Nochmal LOS tippen.',
+  timeup: { neutral: 'Zeit um!', froh: 'Uh-oh, Zeit um!', schelmisch: 'Uh-oh! Zeit um.', bedrueckt: 'Zeit um ...', traurig: 'Oh nein, Zeit um ...', verschlafen: 'Zeit um.' },
+  late: 'Trotzdem geschafft! Nächstes Mal schneller?',
+  streak: { 2: 'Doppelpack!', 3: 'Hattrick!', 5: 'Fünf am Stück!', 7: 'Unaufhaltsam!', 10: 'Legende!' },
+  resume: 'Okay, weiter! Leg mich wieder hin.',
+  resumeManual: 'Okay, weiter geht es.',
+  aborted: 'Abgebrochen. Zählt nicht.'
+};
+
+/* ---------- Speicher ---------- */
+const KEY = 'slappytimer.v1';
+const DEFAULTS = {
+  settings: { min: 20, ring: 'fill', vol: 2, half: 1, hurry: 1, final10: 1, showTime: 1, talk: 1, test: 0 },
+  stats: { runs: 0, wins: 0, fails: 0, streak: 0, best: 0, failStreak: 0, lastAt: 0, last: '', leftSum: 0 },
+  hist: []
+};
+const clone = o => JSON.parse(JSON.stringify(o));
+function load() {
+  const d = clone(DEFAULTS);
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      Object.assign(d.settings, s.settings || {});
+      Object.assign(d.stats, s.stats || {});
+      if (Array.isArray(s.hist)) d.hist = s.hist.slice(0, 30);
+    }
+  } catch (e) { /* ohne Speicher weiter */ }
+  return d;
+}
+let save = load();
+const set = () => save.settings;
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* egal */ } }
+
+/* ---------- Helfer ---------- */
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const pad = n => String(n).padStart(2, '0');
+const perf = () => performance.now();
+function fmt(ms, up) {
+  const s = Math.max(0, up ? Math.floor(ms / 1000) : Math.ceil(ms / 1000));
+  return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+}
+
+/* ---------- Laune ---------- */
+let awake = false;
+function baseMood() {
+  const s = save.stats;
+  if (s.last === 'win') return s.streak >= 2 ? 'schelmisch' : 'froh';
+  if (s.last === 'fail') return s.failStreak >= 2 ? 'traurig' : 'bedrueckt';
+  return 'neutral';
+}
+function mood() {
+  const s = save.stats;
+  if (!awake && s.lastAt && Date.now() - s.lastAt > CFG.sleepyAfterH * 3600e3) return 'verschlafen';
+  return baseMood();
+}
+
+/* =====================================================================
+   KLANG: kleiner Chiptune-Synthesizer (Puls, Dreieck, Rauschen)
+   ===================================================================== */
+const A = (() => {
+  let ctx = null, bus = null, master = null, ready = false, noiseBuf = null, metalBuf = null;
+  const waves = {}, live = new Set(), clips = {};
+  const VOL = [0, 0.22, 0.5, 0.85];
+
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return ready; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try { ctx = new AC({ latencyHint: 'interactive' }); } catch (e) { try { ctx = new AC(); } catch (e2) { return false; } }
+    master = ctx.createGain();
+    master.gain.value = VOL[set().vol] ?? 0.5;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.15;
+    bus = ctx.createGain();
+    if (CFG.crunch > 0) {
+      const sh = ctx.createWaveShaper();
+      sh.curve = stairs(CFG.crunch); sh.oversample = 'none';
+      bus.connect(sh); sh.connect(master);
+    } else bus.connect(master);
+    // Echo wie beim 16-Bit-Soundchip
+    const send = ctx.createGain(), dl = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter();
+    send.gain.value = 0.16; dl.delayTime.value = 0.2; fb.gain.value = 0.3; lp.type = 'lowpass'; lp.frequency.value = 2500;
+    bus.connect(send); send.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(master);
+    master.connect(comp); comp.connect(ctx.destination);
+    waves.p12 = pulse(0.125); waves.p25 = pulse(0.25); waves.p50 = pulse(0.5);
+    noiseBuf = lfsr(false); metalBuf = lfsr(true);
+    ready = true;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    renderClips();
+    return true;
+  }
+  function stairs(n) {
+    const len = 4096, c = new Float32Array(len);
+    for (let i = 0; i < len; i++) { const x = i / (len - 1) * 2 - 1; c[i] = Math.round(x * n) / n; }
+    return c;
+  }
+  function pulse(duty) {
+    const N = 64, re = new Float32Array(N), im = new Float32Array(N);
+    for (let n = 1; n < N; n++) re[n] = 2 / (n * Math.PI) * Math.sin(n * Math.PI * duty);
+    return ctx.createPeriodicWave(re, im);
+  }
+  function lfsr(short) { // Rauschen wie beim NES, "short" klingt metallisch
+    const sr = ctx.sampleRate, len = Math.floor(sr), buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    const hold = Math.max(1, Math.round(sr / 24000)), tap = short ? 6 : 1;
+    let reg = 1, v = 0;
+    for (let i = 0; i < len; i++) {
+      if (i % hold === 0) { const b = (reg ^ (reg >> tap)) & 1; reg = (reg >> 1) | (b << 14); v = (reg & 1) ? 0.5 : -0.5; }
+      d[i] = v;
+    }
+    return buf;
+  }
+  function setVol(level) { if (master) master.gain.setTargetAtTime(VOL[level] ?? 0.5, ctx.currentTime, 0.02); }
+
+  function tone(o) {
+    if (!ready) return 0;
+    const t = Math.max(o.t || 0, ctx.currentTime + 0.004);
+    const e = Object.assign({ a: 0.004, d: 0.06, s: 0.7, r: 0.05 }, o.env || {});
+    const dur = Math.max(o.dur || 0.05, 0.015);
+    let src;
+    if (o.wave === 'noise' || o.wave === 'metal') {
+      src = ctx.createBufferSource();
+      src.buffer = o.wave === 'noise' ? noiseBuf : metalBuf; src.loop = true;
+      src.playbackRate.setValueAtTime(o.rate || 1, t);
+      if (o.rateTo) src.playbackRate.exponentialRampToValueAtTime(o.rateTo, t + dur);
+    } else {
+      src = ctx.createOscillator();
+      if (waves[o.wave]) src.setPeriodicWave(waves[o.wave]);
+      else src.type = o.wave === 'tri' ? 'triangle' : (o.wave === 'sine' ? 'sine' : 'square');
+      src.frequency.setValueAtTime(o.f, t);
+      if (o.arp) {
+        const stp = o.arpStep || 1 / 60; let k = 0;
+        for (let tt = t; tt < t + dur; tt += stp) src.frequency.setValueAtTime(o.f * Math.pow(2, o.arp[k++ % o.arp.length] / 12), tt);
+      } else if (o.to) {
+        const t1 = t + (o.toDelay || 0);
+        src.frequency.setValueAtTime(o.f, t1);
+        src.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t1 + (o.toDur || dur));
+      }
+      if (o.detune) src.detune.setValueAtTime(o.detune, t);
+      if (o.vib) {
+        const l = ctx.createOscillator(), lg = ctx.createGain(), vd = o.vib.delay ?? 0.08;
+        l.frequency.value = o.vib.rate || 6;
+        lg.gain.setValueAtTime(0, t); lg.gain.setValueAtTime(0, t + vd);
+        lg.gain.linearRampToValueAtTime(o.vib.depth || 25, t + vd + 0.08);
+        l.connect(lg); lg.connect(src.detune);
+        l.start(t); l.stop(t + dur + e.r + 0.1);
+      }
+    }
+    const g = ctx.createGain(), pk = o.vol ?? 0.2, end = t + Math.max(dur, e.a + e.d);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(pk, t + e.a);
+    g.gain.linearRampToValueAtTime(pk * e.s, t + e.a + e.d);
+    g.gain.setValueAtTime(pk * e.s, end);
+    g.gain.linearRampToValueAtTime(0, end + e.r);
+    src.connect(g); g.connect(bus);
+    src.start(t); src.stop(end + e.r + 0.02);
+    live.add(src);
+    src.onended = () => { live.delete(src); try { src.disconnect(); g.disconnect(); } catch (_) { /* egal */ } };
+    return end + e.r;
+  }
+
+  const SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  function midi(n) {
+    const m = /^([A-G])(#|b)?(-?\d)$/.exec(n);
+    if (!m) return null;
+    return 12 * (+m[3] + 1) + SEMI[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  }
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  function parse(str) {
+    return str.trim().split(/\s+/).map(tok => {
+      const [n, l = '8'] = tok.split(':');
+      let b = 4 / parseInt(l, 10);
+      if (l.includes('.')) b *= 1.5;
+      if (l.includes('t')) b *= 2 / 3;
+      return { m: n === '-' ? null : midi(n), b, slide: tok.includes('~') };
+    });
+  }
+  function minorize(m, key) { const d = ((m - key) % 12 + 12) % 12; return (d === 4 || d === 9 || d === 11) ? m - 1 : m; }
+  function grace(ns) {
+    const out = [];
+    for (const x of ns) {
+      if (x.m != null && x.b >= 0.5) { out.push({ m: x.m - 1, b: 0.125 }); out.push(Object.assign({}, x, { b: x.b - 0.125 })); }
+      else out.push(x);
+    }
+    return out;
+  }
+  // Spielt mehrere Spuren und färbt sie nach Laune (Tempo, Moll, Vorschläge, Seufzer)
+  function play(tracks, moodKey, opt = {}) {
+    if (!ready) return 0;
+    const M = MOODS[moodKey] || MOODS.neutral;
+    const t0 = opt.t ?? ctx.currentTime + 0.03;
+    let end = t0;
+    for (const tr of tracks) {
+      const spb = 60 / ((tr.bpm || 150) * (opt.tempo ?? M.tempo));
+      let ns = parse(tr.n);
+      if (M.minor && !tr.keep) ns = ns.map(x => x.m == null ? x : Object.assign({}, x, { m: minorize(x.m, tr.key || 0) }));
+      if (M.grace && tr.lead) ns = grace(ns);
+      const shift = (tr.oct || 0) * 12;
+      let t = t0 + (tr.delay || 0) * spb;
+      ns.forEach((x, i) => {
+        const dur = x.b * spb;
+        if (x.m != null) {
+          const f = hz(x.m + shift);
+          const o = { wave: tr.w || (tr.lead ? M.wave : 'p50'), f, t, dur: dur * (tr.gate ?? 0.85), vol: tr.v ?? 0.2, env: tr.env, vib: tr.vib, detune: M.detune || 0 };
+          if (o.wave === 'tri' && tr.lead) o.vol *= 1.5;
+          const nx = ns[i + 1];
+          if (x.slide && nx && nx.m != null) o.to = hz(nx.m + shift);
+          if (i === ns.length - 1 && tr.lead && (M.sigh || opt.sigh)) {
+            o.to = f * 0.8; o.toDelay = dur * 0.35; o.toDur = dur * 0.9; o.dur = dur;
+            o.vib = o.vib || { rate: 5, depth: 30, delay: 0.1 };
+          }
+          if (tr.arp) o.arp = tr.arp;
+          end = Math.max(end, tone(o));
+        }
+        t += dur;
+      });
+    }
+    return end;
+  }
+  function drum(type, t, vol = 0.3) {
+    if (type === 'k') return tone({ wave: 'tri', f: 160, to: 45, toDur: 0.12, t, dur: 0.12, vol: vol * 1.4, env: { a: 0.001, d: 0.1, s: 0, r: 0.03 } });
+    if (type === 's') {
+      tone({ wave: 'noise', rate: 0.9, t, dur: 0.1, vol: vol * 0.7, env: { a: 0.001, d: 0.09, s: 0, r: 0.02 } });
+      return tone({ wave: 'tri', f: 220, to: 120, t, dur: 0.06, vol: vol * 0.6, env: { a: 0.001, d: 0.05, s: 0, r: 0.02 } });
+    }
+    if (type === 'h') return tone({ wave: 'noise', rate: 2, t, dur: 0.03, vol: vol * 0.35, env: { a: 0.001, d: 0.03, s: 0, r: 0.01 } });
+    if (type === 'c') return tone({ wave: 'metal', rate: 1.6, t, dur: 0.5, vol: vol * 0.3, env: { a: 0.001, d: 0.45, s: 0, r: 0.05 } });
+    return t;
+  }
+  function beat(pattern, t0, bpm, vol) {
+    const stp = 60 / bpm / 4; let end = t0;
+    [...pattern].forEach((c, i) => { if (c !== '-') end = Math.max(end, drum(c, t0 + i * stp, vol) || 0); });
+    return end;
+  }
+
+  /* ----- Stimme: Formant-Synthese wie bei alten Sprachchips, danach als 8-Bit-Sample ----- */
+  // Formanten F1-F3 in Hz (deutsche Laute, grob), Bandbreiten dazu
+  const VOW = { i: [280, 2250, 3000], e: [380, 2100, 2600], a: [750, 1250, 2600], o: [420, 760, 2500], u: [290, 750, 2300], m: [260, 1100, 2300], l: [380, 1200, 2700] };
+  const BW = [70, 100, 150];
+  // Segmente: d Dauer, v Laut, to Gleiten zu, p Tonhöhe von/bis, g Stimme, n Hauchen (h), f Zischen (s), vib Vibrato
+  const CLIPS = {
+    juhu: { base: 250, fs: 1.18, segs: [
+      { d: 0.07, v: 'i', to: 'u', p: [1, 1.05], g: 0.8 },
+      { d: 0.11, v: 'u', p: [1.05, 1.1], g: 1 },
+      { d: 0.04, v: 'u', g: 0 },
+      { d: 0.06, v: 'u', g: 0.08, n: 0.6, p: [1.25, 1.25] },
+      { d: 0.40, v: 'u', p: [1.25, 1.45], g: 1, vib: 1 },
+      { d: 0.14, v: 'u', p: [1.45, 1.2], g: 0.45 }] },
+    hihi: { base: 300, fs: 1.25, segs: [0, 1, 2, 3].flatMap(k => [
+      { d: 0.035, v: 'i', g: 0, n: 0.7 },
+      { d: 0.075, v: 'i', p: [1.5 - k * 0.07, 1.42 - k * 0.07], g: 1 },
+      { d: 0.045, v: 'i', g: 0 }]) },
+    ohh: { base: 210, fs: 1.1, segs: [
+      { d: 0.14, v: 'o', g: 0.1, n: 0.6 },
+      { d: 0.55, v: 'o', to: 'u', p: [1.08, 0.78], g: 0.9, vib: 1 }] },
+    hm: { base: 230, fs: 1.1, segs: [
+      { d: 0.05, v: 'm', g: 0, n: 0.4 },
+      { d: 0.30, v: 'm', p: [1, 1.35], g: 0.9 }] },
+    uhoh: { base: 250, fs: 1.15, segs: [
+      { d: 0.17, v: 'a', to: 'o', p: [1.32, 1.3], g: 1 },
+      { d: 0.07, v: 'o', g: 0 },
+      { d: 0.32, v: 'o', p: [1.02, 0.9], g: 1, vib: 1 }] },
+    gaehn: { base: 190, fs: 1.1, segs: [
+      { d: 0.12, v: 'a', g: 0.12, n: 0.5 },
+      { d: 0.50, v: 'a', p: [0.95, 1.35], g: 0.85 },
+      { d: 0.40, v: 'a', to: 'm', p: [1.35, 0.8], g: 0.75 }] },
+    los: { base: 260, fs: 1.15, segs: [
+      { d: 0.05, v: 'l', to: 'o', p: [1.2, 1.25], g: 0.7 },
+      { d: 0.17, v: 'o', p: [1.25, 1.35], g: 1 },
+      { d: 0.13, v: 'o', g: 0, f: 1 }] }
+  };
+  async function renderClips() {
+    for (const name of Object.keys(CLIPS)) {
+      try { clips[name] = await renderClip(CLIPS[name]); } catch (e) { /* ohne diese Stimme weiter */ }
+    }
+  }
+  async function renderClip(spec) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const sr = 22050, total = spec.segs.reduce((s, x) => s + x.d, 0) + 0.15;
+    const oc = new OAC(1, Math.ceil(total * sr), sr);
+    const osc = oc.createOscillator(); osc.type = 'sawtooth';
+    const nz = oc.createBufferSource(), nb = oc.createBuffer(1, sr, sr), nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    nz.buffer = nb; nz.loop = true;
+    const vg = oc.createGain(), ng = oc.createGain(), fg = oc.createGain();
+    vg.gain.value = 0; ng.gain.value = 0; fg.gain.value = 0;
+    // Mundraum: drei Resonanzen hintereinander (Tiefpass mit Resonanz je Formant, Q in dB)
+    const res = [0, 1, 2].map(() => { const f = oc.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; return f; });
+    osc.connect(vg); vg.connect(res[0]);
+    nz.connect(ng); ng.connect(res[0]);
+    res[0].connect(res[1]); res[1].connect(res[2]); res[2].connect(oc.destination);
+    // Zischlaut am Mundraum vorbei
+    const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4200; hp.Q.value = -3;
+    const fsx = oc.createGain(); fsx.gain.value = 3;
+    nz.connect(fg); fg.connect(hp); hp.connect(fsx); fsx.connect(oc.destination);
+    const lfo = oc.createOscillator(), lg = oc.createGain();
+    lfo.frequency.value = 6.5; lg.gain.value = 0; lfo.connect(lg); lg.connect(osc.detune);
+    let t = 0.02, prevF = null, pv = 0, pn = 0, pf = 0;
+    const fs = spec.fs;
+    for (const s of spec.segs) {
+      const F = VOW[s.v] || VOW.u, F2 = s.to ? VOW[s.to] : null;
+      res.forEach((f, k) => {
+        f.frequency.setValueAtTime(prevF ? prevF[k] : F[k] * fs, t);
+        f.frequency.linearRampToValueAtTime(F[k] * fs, t + 0.015);
+        if (F2) f.frequency.linearRampToValueAtTime(F2[k] * fs, t + s.d);
+        f.Q.setValueAtTime(20 * Math.log10(F[k] / BW[k]), t);
+      });
+      prevF = (F2 || F).map(v => v * fs);
+      const p = s.p || [1, 1];
+      osc.frequency.setValueAtTime(spec.base * p[0], t);
+      osc.frequency.linearRampToValueAtTime(spec.base * (p[1] ?? p[0]), t + s.d);
+      const gv = s.g ?? 1, gn = s.n ?? 0, gf = s.f ?? 0;
+      vg.gain.setValueAtTime(pv, t); vg.gain.linearRampToValueAtTime(gv, t + 0.012); pv = gv;
+      ng.gain.setValueAtTime(pn, t); ng.gain.linearRampToValueAtTime(gn, t + 0.01); pn = gn;
+      fg.gain.setValueAtTime(pf, t); fg.gain.linearRampToValueAtTime(gf, t + 0.015); pf = gf;
+      lg.gain.setValueAtTime(0, t);
+      if (s.vib) lg.gain.linearRampToValueAtTime(35, t + s.d * 0.7);
+      t += s.d;
+    }
+    vg.gain.setValueAtTime(pv, t); vg.gain.linearRampToValueAtTime(0, t + 0.04);
+    ng.gain.setValueAtTime(pn, t); ng.gain.linearRampToValueAtTime(0, t + 0.03);
+    fg.gain.setValueAtTime(pf, t); fg.gain.linearRampToValueAtTime(0, t + 0.03);
+    osc.start(0); nz.start(0); lfo.start(0);
+    const buf = await oc.startRendering();
+    // auf "8-Bit-Sample" herunterrechnen: 11 kHz, 48 Stufen
+    const d = buf.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    const k = peak > 0 ? 0.95 / peak : 1, hold = Math.max(1, Math.round(sr / 11025)), L = 48;
+    let v = 0;
+    for (let i = 0; i < d.length; i++) { if (i % hold === 0) v = Math.round(d[i] * k * L) / L; d[i] = v; }
+    return buf;
+  }
+  function clip(name, t, moodKey, vol = 0.8) {
+    if (!ready || !clips[name]) return t || (ctx ? ctx.currentTime : 0);
+    const b = clips[name], s = ctx.createBufferSource(), g = ctx.createGain();
+    const rate = (MOODS[moodKey] || MOODS.neutral).rate;
+    s.buffer = b; s.playbackRate.value = rate; g.gain.value = vol;
+    s.connect(g); g.connect(bus);
+    const t0 = Math.max(t || 0, ctx.currentTime + 0.005);
+    s.start(t0); live.add(s);
+    s.onended = () => { live.delete(s); try { s.disconnect(); g.disconnect(); } catch (_) { /* egal */ } };
+    return t0 + b.duration / rate;
+  }
+  function stop() { for (const s of live) { try { s.stop(); } catch (_) { /* egal */ } } live.clear(); }
+
+  return {
+    init, setVol, tone, play, drum, beat, clip, stop, hz,
+    now: () => (ctx ? ctx.currentTime : 0),
+    get ready() { return ready; },
+    clipCount: () => Object.keys(clips).length,
+    clipData: name => (clips[name] ? { sr: clips[name].sampleRate, d: Array.from(clips[name].getChannelData(0)) } : null),
+    state: () => (ctx ? ctx.state : 'none')
+  };
+})();
+
+/* ---------- Die einzelnen Klänge (je Laune anders) ---------- */
+const S = {
+  tail(m, t) {
+    if (m === 'froh') return A.tone({ wave: 'p12', f: A.hz(84), arp: [0, 4, 7, 12], arpStep: 1 / 40, t, dur: 0.3, vol: 0.08, env: { a: 0.002, d: 0.28, s: 0.2, r: 0.05 } });
+    if (m === 'schelmisch') return A.clip('hihi', t, m, 0.7);
+    if (m === 'traurig') return A.clip('ohh', t, m, 0.55);
+    return t;
+  },
+  select(min) {
+    const i = clamp(CFG.durations.indexOf(min), 0, 9), sc = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+    return A.tone({ wave: 'p25', f: A.hz(72 + sc[i]), dur: 0.05, vol: 0.14, env: { a: 0.002, d: 0.04, s: 0.3, r: 0.03 } });
+  },
+  click() { return A.tone({ wave: 'p25', f: A.hz(84), dur: 0.035, vol: 0.1, env: { a: 0.002, d: 0.03, s: 0.2, r: 0.02 } }); },
+  arm(m) { return A.play([{ lead: 1, n: 'G5:16 C6:8', bpm: 200, v: 0.18, gate: 0.7 }], m); },
+  count(n, m) {
+    const note = { 3: 'C5:8', 2: 'E5:8', 1: 'G5:8' }[n] || 'C5:8';
+    return A.play([
+      { lead: 1, n: note, bpm: 150, v: 0.2, gate: 0.6, keep: 1 },
+      { w: 'tri', n: note, oct: -1, bpm: 150, v: 0.22, gate: 0.5, keep: 1 }
+    ], m, { tempo: 1 });
+  },
+  start(m) {
+    const t = A.now() + 0.03;
+    let t1 = t;
+    if (m === 'verschlafen') t1 = A.clip('gaehn', t, m, 0.7) - 0.1;
+    else if (!MOODS[m].minor) { A.clip('los', t, m, 0.9); t1 = t + 0.32; }
+    const end = A.play([
+      { lead: 1, n: 'G4:16 C5:16 E5:16 G5:8. E5:16 G5:8 C6:4', bpm: 168, v: 0.2 },
+      { w: 'p50', n: '-:8. E5:8. C5:16 E5:8 G5:4', bpm: 168, v: 0.1 },
+      { w: 'tri', n: 'C3:8 G3:8 C3:8 G3:8 C4:4', bpm: 168, v: 0.26 }
+    ], m, { t: t1 });
+    return S.tail(m, end);
+  },
+  step(k, m) {
+    const M = MOODS[m], sc = M.minor ? [0, 3, 5, 7, 10, 12, 15, 17, 19, 22] : [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+    const f = A.hz(72 + sc[clamp(k, 0, 9)]), t = A.now() + 0.02;
+    if (m === 'schelmisch') {
+      A.tone({ wave: 'p12', f: f * 0.94, t, dur: 0.03, vol: 0.07 });
+      return A.tone({ wave: 'p12', f, t: t + 0.05, dur: 0.06, vol: 0.09, env: { a: 0.002, d: 0.05, s: 0.3, r: 0.05 } });
+    }
+    return A.tone({ wave: M.wave, f, t, dur: 0.08, vol: M.wave === 'tri' ? 0.16 : 0.09, env: { a: 0.002, d: 0.06, s: 0.25, r: 0.09 }, vib: M.minor ? { rate: 5, depth: 18, delay: 0.03 } : null });
+  },
+  half(m) {
+    let t = A.now() + 0.03;
+    const W = (t0, d, v = 0.06) => A.tone({ wave: 'p25', f: 2093, t: t0, dur: d, vol: v, vib: { rate: 28, depth: 70, delay: 0 }, env: { a: 0.005, d: 0.02, s: 0.9, r: 0.03 } });
+    if (MOODS[m].minor || m === 'verschlafen') { W(t, 0.26, 0.045); t += 0.42; }
+    else { W(t, 0.08); W(t + 0.15, 0.08); W(t + 0.3, 0.34); t += 0.78; }
+    const end = A.play([
+      { lead: 1, n: 'C6:16 G5:16 C6:16 E6:8.', bpm: 150, v: 0.17 },
+      { w: 'tri', n: 'C4:16 G3:16 C4:16 C4:8.', bpm: 150, v: 0.22 }
+    ], m, { t });
+    return S.tail(m === 'froh' ? '' : m, end);
+  },
+  hurry(m) {
+    const end = A.play([
+      { lead: 1, n: 'C5:32 E5:32 G5:32 C6:32 D5:32 F#5:32 A5:32 D6:32 E5:32 G#5:32 B5:32 E6:16', bpm: 132, v: 0.16 },
+      { w: 'tri', n: 'C3:8 D3:8 E3:8', bpm: 132, v: 0.24 }
+    ], m);
+    return m === 'schelmisch' ? A.clip('hihi', end, m, 0.55) : end;
+  },
+  tick(left) { return A.tone({ wave: 'p50', f: A.hz(84 + (10 - left)), dur: 0.03, vol: 0.055, env: { a: 0.001, d: 0.03, s: 0, r: 0.01 } }); },
+  win(m, streak) {
+    const t = A.now() + 0.03, M = MOODS[m];
+    const turn = M.minor || m === 'verschlafen';   // traurig gewesen: erst "Hm?", dann JUHU
+    let tj = t;
+    if (turn) { A.clip('hm', t, 'neutral', 0.6); tj = t + 0.42; }
+    const fm = turn ? 'froh' : m;
+    A.clip('juhu', tj, fm, 1);
+    const tf = tj + 0.66;
+    let end = A.play([
+      { lead: 1, n: 'G5:16 G5:16 C6:8 E6:8. D6:16 C6:16 D6:16 E6:4.', bpm: 160, v: 0.19 },
+      { w: 'p50', n: 'E5:16 E5:16 G5:8 C6:8. B5:16 A5:16 B5:16 C6:4.', bpm: 160, v: 0.1 },
+      { w: 'tri', n: 'C3:8 G3:8 C4:8 G3:8 C3:4.', bpm: 160, v: 0.28 }
+    ], fm, { t: tf });
+    A.beat('k-h-s-h-k-h-s-h-c', tf, 160 * MOODS[fm].tempo, 0.22);
+    if (streak >= 3) end = A.play([{ lead: 1, n: 'C6:32 D6:32 E6:32 G6:32 A6:32 C7:8', bpm: 150, v: 0.13, gate: 0.95 }], 'froh', { t: end });
+    if (streak >= 5) end = A.play([
+      { lead: 1, n: 'E6:16 C6:16 G6:8 E6:16 C7:4', bpm: 150, v: 0.13 },
+      { w: 'tri', n: 'C4:16 E4:16 G4:8 C4:16 C5:4', bpm: 150, v: 0.22 }
+    ], 'froh', { t: end });
+    return S.tail(fm === 'schelmisch' || fm === 'froh' ? fm : '', end);
+  },
+  timeup(m) {
+    const t = A.now() + 0.03;
+    A.clip('uhoh', t, m, 0.9);
+    const t1 = t + 0.62;
+    let end;
+    if (m === 'schelmisch' || m === 'froh') {
+      end = A.tone({ wave: m === 'froh' ? 'p25' : 'p12', f: 1400, to: 180, t: t1, dur: 0.7, vol: 0.13, vib: { rate: 9, depth: 40, delay: 0 }, env: { a: 0.005, d: 0.1, s: 0.8, r: 0.06 } });
+      A.drum('k', end - 0.04, 0.45);
+    } else {
+      end = A.play([
+        { lead: 1, n: 'E5:8 D5:8 C5:8 G4:4.', bpm: 116, v: 0.19 },
+        { w: 'tri', n: 'C4:8 B3:8 A3:8 G3:4.', bpm: 116, v: 0.24 }
+      ], m, { t: t1, sigh: true });
+    }
+    return MOODS[m].minor ? A.clip('ohh', end + 0.05, m, 0.6) : end;
+  },
+  nag(m) {
+    const t = A.now() + 0.02, f = A.hz(MOODS[m].minor ? 81 : 88);
+    A.tone({ wave: 'p25', f, t, dur: 0.06, vol: 0.11 });
+    return A.tone({ wave: 'p25', f, t: t + 0.13, dur: 0.06, vol: 0.11 });
+  },
+  late(m) { return A.play([{ lead: 1, n: 'C5:16 E5:16 G5:8 E5:16 G5:4', bpm: 150, v: 0.16 }, { w: 'tri', n: 'C3:4 C3:4', bpm: 150, v: 0.22 }], m); },
+  falseStart(m) {
+    const t = A.now() + 0.02;
+    A.tone({ wave: 'noise', rate: 1.6, rateTo: 0.2, t, dur: 0.18, vol: 0.16, env: { a: 0.002, d: 0.15, s: 0.3, r: 0.05 } });
+    const end = A.tone({ wave: 'tri', f: 700, to: 140, t: t + 0.05, dur: 0.36, vol: 0.32, vib: { rate: 14, depth: 80, delay: 0 } });
+    return m === 'schelmisch' ? A.clip('hihi', end, m, 0.55) : end;
+  },
+  poke(m) {
+    const t = A.now() + 0.02;
+    switch (m) {
+      case 'froh': A.play([{ lead: 1, n: 'C6:32 E6:32 G6:32 C7:16', bpm: 150, v: 0.13 }], m, { t }); return A.clip('hihi', t + 0.25, m, 0.5);
+      case 'schelmisch': return A.clip('hihi', t, m, 0.8);
+      case 'bedrueckt': return A.clip('hm', t, m, 0.7);
+      case 'traurig': return A.clip('ohh', t, m, 0.7);
+      case 'verschlafen': return A.clip('gaehn', t, m, 0.7);
+      default: A.clip('hm', t, m, 0.8); return A.play([{ lead: 1, n: 'G5:32 C6:16', bpm: 150, v: 0.1 }], m, { t: t + 0.32 });
+    }
+  },
+  back(m) { const t = A.now() + 0.02; A.clip('hm', t, m, 0.8); return A.play([{ lead: 1, n: 'C5:16 G5:8', bpm: 160, v: 0.14 }], m, { t: t + 0.35 }); },
+  abort(m) { return A.play([{ lead: 1, n: 'G5:16 C5:8', bpm: 180, v: 0.14 }], m); },
+  resume(m) { return A.play([{ lead: 1, n: 'C5:16 E5:16 G5:8', bpm: 180, v: 0.15 }], m); },
+  blip(m) {
+    const M = MOODS[m];
+    return A.tone({ wave: M.wave === 'tri' ? 'p50' : M.wave, f: M.blip * (1 + Math.random() * 0.12), dur: 0.022, vol: 0.035, env: { a: 0.001, d: 0.02, s: 0, r: 0.01 } });
+  }
+};
+
+/* =====================================================================
+   BILD: Board, 10 LEDs und Slappys Gesicht in 64 x 64 Pixeln
+   ===================================================================== */
+const R = (() => {
+  const cv = $('#ring'), g = cv.getContext('2d');
+  const W = 64, C = 32, N = 10;
+  const pos = CFG.ledHours.map(h => { const a = h * Math.PI / 6; return [Math.round(C + 23.5 * Math.sin(a)), Math.round(C - 23.5 * Math.cos(a))]; });
+  const ROW = CFG.ledHours.map(h => [0, 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0][h]);
+  const board = document.createElement('canvas');
+  board.width = W; board.height = W;
+  (() => {
+    const b = board.getContext('2d');
+    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+      const d = Math.hypot(x + 0.5 - C, y + 0.5 - C);
+      if (d <= 31) { b.fillStyle = d > 29.6 ? '#2a2046' : '#120d22'; b.fillRect(x, y, 1, 1); }
+    }
+    for (let i = 0; i < 12; i++) { // Pads am Rand
+      const a = (i + 0.5) * Math.PI / 6, px = Math.round(C + 28 * Math.sin(a)), py = Math.round(C - 28 * Math.cos(a));
+      b.fillStyle = '#7a6430'; b.fillRect(px - 1, py - 1, 3, 3);
+      b.fillStyle = '#000'; b.fillRect(px, py, 1, 1);
+    }
+    b.fillStyle = '#5a5a6a'; b.fillRect(C - 4, 0, 8, 4); b.fillStyle = '#2a2a34'; b.fillRect(C - 3, 1, 6, 2); // USB
+    b.fillStyle = '#d8d8d8'; b.fillRect(C - 3, W - 4, 6, 4); b.fillStyle = '#8a8a98'; b.fillRect(C - 2, W - 3, 4, 2); // Akkustecker
+  })();
+
+  const GRAD = [[0, 200, 60], [150, 220, 0], [248, 184, 0], [248, 104, 0], [228, 0, 60]];
+  function grad(x) {
+    x = clamp(x, 0, 1) * (GRAD.length - 1);
+    const i = Math.min(GRAD.length - 2, Math.floor(x)), f = x - i;
+    return GRAD[i].map((v, j) => Math.round(v + (GRAD[i + 1][j] - v) * f));
+  }
+  function hsv(h) {
+    const i = Math.floor(h * 6), f = h * 6 - i, q = 1 - f;
+    const [r, gg, b] = [[1, f, 0], [q, 1, 0], [0, 1, f], [0, q, 1], [f, 0, 1], [1, 0, q]][((i % 6) + 6) % 6];
+    return [r * 255 | 0, gg * 255 | 0, b * 255 | 0];
+  }
+  const rnd = (k, n) => { const x = Math.sin(k * 127.1 + n * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  let react = null, reactUntil = 0, nextBlink = 0, blinkEnd = 0;
+  function setReact(type, ms) { react = type; reactUntil = perf() + ms; }
+
+  function ledsFor(ph, m, t, info) {
+    const out = [], c = MOODS[m].rgb, L = (col, b) => ({ c: col, b });
+    if (react === 'poke' && t < reactUntil) {
+      const head = ((t - (reactUntil - 900)) / 60) % N;
+      for (let k = 0; k < N; k++) {
+        const d = (head - k + N) % N;
+        const col = m === 'schelmisch' ? hsv((k / N + t / 500) % 1) : c;
+        out.push(L(col, m === 'traurig' ? (Math.abs(ROW[k] - head / 2) < 0.7 ? 0.5 : 0.04) : (d < 1 ? 1 : d < 5 ? 0.6 * (1 - d / 5) : 0.06)));
+      }
+      return out;
+    }
+    switch (ph) {
+      case 'armed': {
+        if (info.flash) { for (let k = 0; k < N; k++) out.push(L([248, 120, 0], (t % 200) < 100 ? 0.9 : 0.1)); break; }
+        const head = (t / 110) % N;
+        for (let k = 0; k < N; k++) { const d = (head - k + N) % N; out.push(L(c, d < 1 ? 0.9 : d < 4 ? 0.5 * (1 - d / 4) : 0.03)); }
+        break;
+      }
+      case 'countdown':
+        for (let k = 0; k < N; k++) out.push(L([248, 184, 0], ROW[k] < 4 - info.count ? 0.9 : 0.04));
+        break;
+      case 'running': case 'away': {
+        const p = info.p, drain = set().ring === 'drain';
+        const n = (drain ? 1 - p : p) * N, full = Math.floor(n), frac = n - full;
+        const hurry = p >= CFG.hurryAt, breathe = 0.85 + 0.15 * Math.sin(t / 1600 * 2 * Math.PI);
+        const ct = t % 6000, cp = ct < 1000 ? ct / 1000 * (full + 1.5) : -9;  // Lebenszeichen: Lichtblitz läuft über den Ring
+        for (let k = 0; k < N; k++) {
+          let col = drain ? grad(p) : grad(k / (N - 1)), b = 0;
+          if (k < full) b = 0.85;
+          else if (k === full) {
+            b = (drain ? frac * 0.85 : 0.08 + 0.77 * frac) * breathe;
+            if (hurry && (t % 500) < 250) { b = 0.95; col = [228, 0, 60]; }
+          }
+          if (k <= full) { const d = Math.abs(cp - k); if (d < 1) col = col.map(v => v + (255 - v) * 0.55 * (1 - d)); }
+          out.push(L(col.map(v => v | 0), b));
+        }
+        if (info.halfFx && (t % 250) < 125) for (const o of out) if (o.b > 0.05) { o.c = [255, 255, 255]; o.b = 1; }
+        break;
+      }
+      case 'timeup': {
+        const b = info.since < 2400 ? ((t % 400) < 200 ? 0.9 : 0.05) : 0.12 + 0.3 * (0.5 + 0.5 * Math.sin(t / 2000 * 2 * Math.PI));
+        for (let k = 0; k < N; k++) out.push(L([228, 0, 60], b));
+        break;
+      }
+      case 'result':
+        if (info.win) {
+          const fast = info.since < 4000, sp = fast ? 600 : 3000;
+          for (let k = 0; k < N; k++) {
+            let col = hsv((k / N + t / sp) % 1);
+            if (fast && rnd(k, Math.floor(t / 90)) > 0.85) col = [255, 255, 255];
+            out.push(L(col, fast ? 0.9 : 0.45));
+          }
+        } else for (let k = 0; k < N; k++) out.push(L(grad(0.15 + 0.7 * k / (N - 1)), 0.35));
+        break;
+      case 'icon':
+        for (let k = 0; k < N; k++) out.push(L(grad(k / (N - 1)), 1));
+        break;
+      default: // idle: jede Laune leuchtet anders
+        for (let k = 0; k < N; k++) {
+          let b = 0, col = c;
+          if (m === 'froh') b = 0.1 + 0.3 * Math.max(0, Math.sin((t / 6000 - k / N) * 2 * Math.PI));
+          else if (m === 'schelmisch') { const slot = Math.floor(t / 350); b = rnd(k, slot) > 0.72 ? 0.05 + 0.5 * (1 - (t % 350) / 350) : 0.05; col = hsv(rnd(k, slot + 99)); }
+          else if (m === 'bedrueckt') b = 0.06 + 0.12 * (0.5 + 0.5 * Math.sin(t / 6000 * 2 * Math.PI));
+          else if (m === 'traurig') { const dr = (t % 5000) / 5000 * 5, d = Math.abs(ROW[k] - dr); b = 0.04 + (d < 0.6 ? 0.3 * (1 - d / 0.6) : 0); }
+          else if (m === 'verschlafen') b = 0.04 + 0.1 * (0.5 + 0.5 * Math.sin(t / 8000 * 2 * Math.PI));
+          else b = 0.1 + 0.18 * (0.5 + 0.5 * Math.sin(t / 4000 * 2 * Math.PI));
+          out.push(L(col, b));
+        }
+    }
+    return out;
+  }
+
+  // runder Lichthof in Pixelstufen, wie Licht hinter dem Deckel
+  const HALO = [[], [], []];
+  for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) {
+    const d = Math.hypot(dx, dy);
+    if (d < 2.6) continue;
+    if (d < 3.7) HALO[0].push([dx, dy]); else if (d < 4.7) HALO[1].push([dx, dy]); else if (d < 5.7) HALO[2].push([dx, dy]);
+  }
+  const HALO_A = [0.34, 0.18, 0.08];
+  const mix = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+  const PKG = [58, 52, 80], PKG_IN = [74, 68, 98];
+  function drawLeds(leds) {
+    g.globalCompositeOperation = 'lighter';
+    leds.forEach((Ld, k) => {
+      const b = clamp(Ld.b, 0, 1); if (b < 0.02) return;
+      const [x, y] = pos[k], [r, gg, bb] = Ld.c;
+      HALO.forEach((ring, i) => {
+        g.fillStyle = `rgba(${r},${gg},${bb},${HALO_A[i] * b})`;
+        for (const [dx, dy] of ring) g.fillRect(x + dx, y + dy, 1, 1);
+      });
+    });
+    g.globalCompositeOperation = 'source-over';
+    leds.forEach((Ld, k) => {
+      const [x, y] = pos[k], b = clamp(Ld.b, 0, 1);
+      // aus = graues Gehäuse, an = Farbe, dazwischen gemischt
+      const f = Math.sqrt(b), lit = Ld.c.map(v => v * (0.35 + 0.65 * b));
+      const body = mix(PKG, lit, f), core = mix(PKG_IN, mix(lit, [255, 255, 255], 0.45 * b), f);
+      g.fillStyle = `rgb(${PKG.join(',')})`; g.fillRect(x - 2, y - 2, 5, 5);
+      g.fillStyle = `rgb(${body.join(',')})`; g.fillRect(x - 2, y - 1, 5, 3); g.fillRect(x - 1, y - 2, 3, 5);
+      g.fillStyle = `rgb(${core.join(',')})`; g.fillRect(x - 1, y - 1, 3, 3);
+    });
+  }
+
+  const SPR = {
+    eye_open: ['.##.', '####', '####', '####', '.##.'],
+    eye_happy: ['....', '.##.', '#..#', '....', '....'],
+    eye_closed: ['....', '....', '####', '....', '....'],
+    eye_down: ['....', '....', '####', '####', '.##.'],
+    eye_x: ['#..#', '.##.', '.##.', '#..#', '....'],
+    eye_star: ['..#..', '.###.', '#####', '.###.', '.#.#.'],
+    brow_sad_l: ['..##', '##..'], brow_sad_r: ['##..', '..##'], brow_up: ['####'],
+    m_smile: ['#........#', '.#......#.', '..######..'],
+    m_grin: ['##########', '#rrrrrrrr#', '.#rrpprr#.', '..######..'],
+    m_flat: ['..######..'],
+    m_frown: ['..######..', '.#......#.', '#........#'],
+    m_o: ['.##.', '#rr#', '#rr#', '.##.'],
+    m_smirk: ['.........#', '........#.', '..######..'],
+    m_tongue: ['#........#', '.#......#.', '..######..', '......pp..', '......pp..'],
+    m_wavy: ['..#...#...', '.#.#.#.#.#', '#...#...#.'],
+    m_small: ['...####...'],
+    tear: ['b', 'b'], sweat: ['.b.', 'bbb', '.b.'], blush: ['kk'], z: ['####', '..#.', '.#..', '####']
+  };
+  const COL = { '#': '#fcfcfc', r: '#a8002c', p: '#f878a8', b: '#3cbcfc', k: '#f87898' };
+  function spr(name, x, y, tint) {
+    const s = SPR[name]; if (!s) return;
+    for (let j = 0; j < s.length; j++) for (let i = 0; i < s[j].length; i++) {
+      const ch = s[j][i]; if (ch === '.') continue;
+      g.fillStyle = (ch === '#' && tint) ? tint : COL[ch]; g.fillRect(x + i, y + j, 1, 1);
+    }
+  }
+  const DIRS = [[0, 0], [1, 0], [-1, 0], [0, -1], [1, -1], [-1, 1], [0, 0], [0, 1]];
+  const wander = t => DIRS[Math.floor(rnd(3, Math.floor(t / 1800)) * DIRS.length)];
+  const hop = (t, per) => ((t % per) < 160 ? -1 : 0);
+  function lookAt(k) {
+    const [x, y] = pos[k], dx = x - C, dy = y - C;
+    return [dx > 7 ? 1 : dx < -7 ? -1 : 0, dy > 7 ? 1 : dy < -7 ? -1 : 0];
+  }
+  function reactFace(m) {
+    if (react === 'half') return { eye: 'open', mouth: 'o', look: [0, -1], small: 1 };
+    if (react === 'false') return { eye: 'x', mouth: 'o' };
+    if (react === 'poke') switch (m) {
+      case 'froh': return { eye: 'happy', mouth: 'grin', blush: 1, dy: -1 };
+      case 'schelmisch': return { eye: 'open', eyeR: 'happy', mouth: 'tongue', brow: 'up', blush: 1 };
+      case 'bedrueckt': return { eye: 'down', mouth: 'small' };
+      case 'traurig': return { eye: 'closed', mouth: 'frown', brow: 'sad', tear: 2 };
+      case 'verschlafen': return { eye: 'down', mouth: 'o' };
+      default: return { eye: 'open', mouth: 'o', look: [0, -1], small: 1 };
+    }
+    return null;
+  }
+  function faceFor(ph, m, t, info) {
+    if (react && t < reactUntil) { const f = reactFace(m); if (f) return f; }
+    switch (ph) {
+      case 'armed': return info.flash ? { eye: 'x', mouth: 'o' } : { eye: 'open', mouth: 'o', look: [0, 1] };
+      case 'countdown': return { eye: 'open', mouth: 'flat', look: [0, -1] };
+      case 'running': case 'away': {
+        const hurry = info.p >= CFG.hurryAt, sad = MOODS[m].minor;
+        return { eye: 'open', mouth: hurry ? 'wavy' : (sad ? 'flat' : 'smile'), look: info.look, sweat: hurry, brow: sad ? 'sad' : null };
+      }
+      case 'timeup': return { eye: MOODS[m].minor ? 'open' : 'x', mouth: 'frown', brow: 'sad', tear: Math.floor((t % 2000) / 400) };
+      case 'result':
+        if (info.win) { const star = (t % 1600) < 800; return { eye: star ? 'star' : 'happy', mouth: 'grin', blush: 1, dy: hop(t, 500), tint: star ? '#f8d800' : null }; }
+        return { eye: 'open', mouth: 'smile', brow: 'sad' };
+      case 'icon': return { eye: 'open', mouth: 'grin', blush: 1, look: [0, 0], noBlink: 1 };
+      default:
+        switch (m) {
+          case 'froh': return { eye: 'open', mouth: 'grin', blush: 1, look: wander(t), dy: hop(t, 2600) };
+          case 'schelmisch': return { eye: 'open', eyeR: 'happy', mouth: (t % 5000) < 2500 ? 'tongue' : 'smirk', brow: 'up', look: [Math.sin(t / 700) > 0 ? 1 : -1, 0] };
+          case 'bedrueckt': return { eye: 'open', mouth: 'flat', look: [0, 1] };
+          case 'traurig': return { eye: 'open', mouth: 'frown', brow: 'sad', look: [0, 1], tear: Math.floor((t % 2400) / 480) };
+          case 'verschlafen': return { eye: 'closed', mouth: 'small', z: Math.floor(t / 400) };
+          default: return { eye: 'open', mouth: 'smile', look: wander(t) };
+        }
+    }
+  }
+  function blinking(t) {
+    if (t > blinkEnd && t > nextBlink) { blinkEnd = t + 130; nextBlink = t + 2500 + Math.random() * 3500; }
+    return t < blinkEnd;
+  }
+  function drawFace(f, t) {
+    const dy = f.dy || 0, eR = f.eyeR || f.eye;
+    const blink = !f.noBlink && f.eye === 'open' && blinking(t);
+    const nl = blink ? 'eye_closed' : 'eye_' + f.eye, nr = blink ? 'eye_closed' : 'eye_' + eR;
+    spr(nl, SPR[nl][0].length === 5 ? 24 : 25, 25 + dy, f.tint);
+    spr(nr, 35, 25 + dy, f.tint);
+    if (!blink) {
+      let [lx, ly] = f.look || [0, 0];
+      if (ly > 0) lx = 0;   // schräg nach unten passt nicht ins runde Auge
+      const s = f.small ? 1 : 2, o = f.small ? 1 : 0;
+      g.fillStyle = '#000';
+      if (f.eye === 'open') g.fillRect(26 + lx + o, 27 + ly + dy + o, s, s);
+      if (eR === 'open') g.fillRect(36 + lx, 27 + ly + dy + o, s, s);
+    }
+    if (f.brow === 'sad') { spr('brow_sad_l', 25, 22 + dy); spr('brow_sad_r', 35, 22 + dy); }
+    if (f.brow === 'up') spr('brow_up', 35, 22 + dy);
+    const mn = 'm_' + f.mouth;
+    spr(mn, 32 - (SPR[mn][0].length >> 1), 34 + dy);
+    if (f.blush) { spr('blush', 22, 33 + dy); spr('blush', 40, 33 + dy); }
+    if (f.tear != null) spr('tear', 25, 30 + dy + f.tear);
+    if (f.sweat) spr('sweat', 41, 21 + dy);
+    if (f.z != null) spr('z', 42, 19 - (f.z % 5));
+  }
+  function draw(ph, m, t, info) {
+    g.clearRect(0, 0, W, W);
+    g.drawImage(board, 0, 0);
+    drawLeds(ledsFor(ph, m, t, info));
+    drawFace(faceFor(ph, m, t, info), t);
+  }
+  function icon() { react = null; draw('icon', 'froh', 0, { p: 1, look: [0, 0] }); return cv.toDataURL('image/png'); }
+  return { draw, react: setReact, lookAt, icon };
+})();
+
+/* =====================================================================
+   SENSOR und BILDSCHIRM WACH HALTEN
+   ===================================================================== */
+const M = (() => {
+  let on = false, last = 0;
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  function handle(e) {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x == null || a.y == null || a.z == null) return;
+    last = perf();
+    const z = iOS ? -a.z : a.z, mag = Math.hypot(a.x, a.y, a.z) || 9.81;
+    const tilt = Math.acos(clamp(Math.abs(z) / mag, 0, 1)) * 180 / Math.PI;
+    onMotion(tilt, Math.abs(mag - 9.81), z < -6);
+  }
+  function listen() { if (!on && 'DeviceMotionEvent' in window) { window.addEventListener('devicemotion', handle); on = true; } }
+  function permission() {
+    const D = window.DeviceMotionEvent;
+    if (D && typeof D.requestPermission === 'function') return D.requestPermission().then(r => r === 'granted').catch(() => false);
+    return Promise.resolve(true);
+  }
+  return { listen, permission, alive: () => last > 0 && perf() - last < 1500 };
+})();
+
+const WL = (() => {
+  let lock = null, want = false, ok = null;
+  async function req() {
+    if (!('wakeLock' in navigator)) { ok = false; return; }
+    try { lock = await navigator.wakeLock.request('screen'); ok = true; lock.addEventListener('release', () => { lock = null; }); }
+    catch (e) { ok = false; }
+  }
+  document.addEventListener('visibilitychange', () => { if (want && document.visibilityState === 'visible' && !lock) req(); });
+  return {
+    on() { want = true; if (!lock) req(); },
+    off() { want = false; if (lock) { lock.release().catch(() => {}); lock = null; } },
+    get ok() { return ok; },
+    state() { return lock ? 'aktiv' : ok === false ? 'nicht verfügbar' : 'aus'; }
+  };
+})();
+
+/* =====================================================================
+   ABLAUF
+   ===================================================================== */
+const app = $('#app'), timeEl = $('#time'), subEl = $('#sub'), bubbleEl = $('#bubble'), hintEl = $('#hint');
+const stage = $('#stage'), sheetEl = $('#sheet'), awayEl = $('#away');
+const st = {
+  phase: 'idle', mode: 'sensor', tPhase: 0, count: 3,
+  startAt: 0, durMs: 0, speed: 1, skip: 0, overAt: 0,
+  lastStep: 0, half: false, hurry: false, final: 11, nagAt: 0,
+  moodRun: 'neutral', dimAt: 0, flatSince: 0, liftSince: 0, needFlat: false,
+  tilt: null, faceDown: false, result: null, undo: null, undoUntil: 0,
+  halfFxUntil: 0, flashUntil: 0, away: false, armTimer: 0, cdTimer: 0, poked: false
+};
+const elapsed = () => (Date.now() - st.startAt) * st.speed + st.skip;
+const over = () => (Date.now() - st.overAt) * st.speed;
+const realFalseStart = () => CFG.falseStartMs / (st.speed > 1 ? 5 : 1);
+
+function setPhase(p) {
+  st.phase = p; st.tPhase = perf();
+  R.react(null, 0);
+  document.body.dataset.phase = p;
+  wake();
+  ui();
+}
+function wake(ms) { app.classList.remove('dim'); st.dimAt = perf() + (ms || CFG.dimAfterMs); }
+function ui() {
+  const ph = st.phase, man = st.mode === 'manual';
+  document.querySelectorAll('.panel').forEach(el => el.classList.toggle('on', el.dataset.for.split(' ').includes(ph)));
+  $('#goBtn').hidden = !man;
+  $('#noSensorBtn').hidden = man;
+  $('#doneBtn').hidden = !man;
+  $('#abortBtn').hidden = ph !== 'running';
+  $('#undoBtn').hidden = !(st.undo && perf() < st.undoUntil);
+  $('#optBtn').style.visibility = (ph === 'idle' || ph === 'result') ? 'visible' : 'hidden';
+  app.classList.toggle('noTime', !set().showTime && ph === 'running');
+  if (ph !== 'running' && ph !== 'countdown' && ph !== 'timeup') app.classList.remove('black');
+  renderChips(); renderMood(); renderTime(); renderHist();
+}
+function renderHist() {
+  const el = $('#hist'), show = st.phase === 'idle' || st.phase === 'result';
+  el.style.visibility = show ? 'visible' : 'hidden';
+  if (!show) return;
+  const h = save.hist.slice(0, 10).reverse();
+  let html = '';
+  for (let i = 0; i < 10 - h.length; i++) html += '<i></i>';
+  h.forEach(r => { html += '<i class="' + (r.r === 'win' ? 'w' : 'f') + (r.test ? ' t' : '') + '"></i>'; });
+  el.innerHTML = html;
+}
+function renderMood() {
+  const m = (st.phase === 'running' || st.phase === 'away') ? st.moodRun : mood();
+  $('#mood').textContent = 'LAUNE: ' + MOODS[m].label;
+  document.documentElement.style.setProperty('--mood', 'rgb(' + MOODS[m].rgb.map(v => Math.round(v + (255 - v) * 0.3)).join(',') + ')');
+}
+function renderChips() {
+  const box = $('#chips');
+  if (!box.childElementCount) {
+    CFG.durations.forEach(min => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.type = 'button'; b.dataset.min = min; b.textContent = min + ' MIN';
+      box.appendChild(b);
+    });
+  }
+  box.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', +b.dataset.min === set().min));
+}
+function renderTime() {
+  const ph = st.phase; let txt, sub = '';
+  if (ph === 'running' || ph === 'away') txt = fmt(st.durMs - elapsed());
+  else if (ph === 'timeup') { txt = '+' + fmt(over(), true); sub = 'NACHSPIELZEIT'; }
+  else if (ph === 'result' && st.result) {
+    const r = st.result;
+    txt = r.win ? fmt(r.left) : '+' + fmt(r.over, true);
+    sub = r.win ? 'ÜBRIG · ' + fmt(r.used, true) + ' GEBRAUCHT' : 'DRÜBER · TROTZDEM FERTIG';
+  } else {
+    txt = fmt(set().min * 60000);
+    if (ph === 'armed' && st.mode === 'sensor') sub = M.alive() && st.tilt != null ? 'NEIGUNG ' + Math.round(st.tilt) + '°' : 'WARTE AUF SENSOR ...';
+    if (ph === 'idle' && set().test) sub = 'SCHNELLTEST AN';
+  }
+  if (timeEl.textContent !== txt) timeEl.textContent = txt;
+  if (subEl.textContent !== sub) subEl.textContent = sub;
+}
+let sayTimer = 0;
+function say(text, opt = {}) {
+  clearInterval(sayTimer);
+  let i = 0;
+  bubbleEl.textContent = '';
+  bubbleEl.classList.toggle('big', !!opt.big);
+  const m = opt.mood || mood();
+  const talk = !opt.silent && set().talk && set().vol > 0 && A.ready;
+  sayTimer = setInterval(() => {
+    i++;
+    bubbleEl.textContent = text.slice(0, i);
+    if (talk && i % 2 === 1 && /[A-Za-zÄÖÜäöüß0-9]/.test(text[i - 1])) S.blip(m);
+    if (i >= text.length) clearInterval(sayTimer);
+  }, 32);
+}
+function hint(text) { hintEl.textContent = text || ''; }
+function moodLine(a, b) { return a === b ? 'Laune: ' + MOODS[b].label.toLowerCase() : 'Laune: ' + MOODS[a].label.toLowerCase() + ' > ' + MOODS[b].label.toLowerCase(); }
+function idleHint() {
+  const s = save.stats;
+  if (!st.poked) return 'Tipp auf Slappy.';
+  return s.runs ? 'Runden ' + s.runs + ' · Serie ' + s.streak + ' · Rekord ' + s.best : '';
+}
+function idleSay(silent) { say(pick(SAY.idle[mood()]), { silent }); hint(idleHint()); }
+
+/* ----- Übergänge ----- */
+function arm() {
+  A.init();
+  const sleepy = mood() === 'verschlafen';
+  awake = true;
+  clearInterval(st.cdTimer);
+  st.mode = 'sensor';
+  setPhase('armed');
+  if (sleepy) S.poke('verschlafen'); else S.arm(mood());
+  say(SAY.armed, { silent: true });
+  hint('');
+  WL.on();
+  M.permission().then(() => M.listen());
+  clearTimeout(st.armTimer);
+  st.armTimer = setTimeout(() => {
+    if (st.phase === 'armed' && !M.alive()) {
+      st.mode = 'manual';
+      say(SAY.armedManual, { silent: true });
+      hint('Bewegungssensor hier nicht verfügbar. Start mit LOS, Ende mit FERTIG.');
+      ui();
+    }
+  }, 1300);
+}
+function countdown() {
+  clearTimeout(st.armTimer);
+  clearInterval(st.cdTimer);
+  const m = mood();
+  setPhase('countdown');
+  st.count = 3; S.count(3, m); say('3', { silent: true, big: true });
+  st.cdTimer = setInterval(() => {
+    st.count--;
+    if (st.count > 0) { S.count(st.count, m); say(String(st.count), { silent: true, big: true }); }
+    else { clearInterval(st.cdTimer); go(); }
+  }, 700);
+}
+function abortCountdown() {
+  clearInterval(st.cdTimer);
+  A.stop(); S.abort(mood());
+  setPhase('armed');
+  say(SAY.countAbort, { silent: true });
+}
+function go() {
+  awake = true;
+  st.moodRun = mood();
+  st.durMs = set().min * 60000; st.speed = set().test ? 60 : 1; st.skip = 0; st.startAt = Date.now();
+  st.lastStep = 0; st.half = false; st.hurry = false; st.final = 11; st.needFlat = false; st.undo = null;
+  setPhase('running');
+  S.start(st.moodRun);
+  say(SAY.go, { silent: true, big: true });
+  hint(WL.ok === false ? 'Bildschirm kann ausgehen: Display-Zeitlimit in den Handy-Einstellungen hochsetzen.' : '');
+  sayRunLater(1800);
+}
+function sayRunLater(ms) {
+  setTimeout(() => { if (st.phase === 'running') say(st.mode === 'manual' ? SAY.runManual : SAY.run, { silent: true }); }, ms);
+}
+function finishEarly() {
+  if (Date.now() - st.startAt < realFalseStart()) return falseStart();
+  const used = elapsed(), left = Math.max(0, st.durMs - used);
+  A.stop();
+  st.undo = clone(save); st.undoUntil = perf() + CFG.undoMs;
+  commit('win', left);
+  const now = mood();
+  st.result = { win: true, left, used };
+  setPhase('result');
+  S.win(st.moodRun, save.stats.streak);
+  const sk = SAY.streak[save.stats.streak] || (save.stats.streak > 1 ? 'Serie: ' + save.stats.streak + '!' : '');
+  say('JUHU!' + (sk ? ' ' + sk : ''), { silent: true, big: true });
+  hint(moodLine(st.moodRun, now));
+  WL.off();
+}
+function falseStart() {
+  A.stop(); S.falseStart(st.moodRun);
+  setPhase('armed');
+  st.flashUntil = perf() + 700; R.react('false', 1400);
+  say(st.mode === 'manual' ? SAY.falseStartManual : SAY.falseStart, { silent: true });
+}
+function timeUp() {
+  awayEl.hidden = true;
+  A.stop();
+  st.overAt = st.startAt + (st.durMs - st.skip) / st.speed;
+  st.nagAt = perf() + CFG.nagEveryMs / (st.speed > 1 ? 10 : 1);
+  const before = st.moodRun;
+  commit('fail', 0);
+  setPhase('timeup');
+  S.timeup(before);
+  say(SAY.timeup[before] || SAY.timeup.neutral, { silent: true, big: true });
+  hint(moodLine(before, mood()) + (st.mode === 'manual' ? '' : ' · Hochnehmen, wenn du fertig bist.'));
+}
+function finishLate() {
+  const o = over();
+  A.stop();
+  if (save.hist[0]) { save.hist[0].over = Math.round(o / 1000); persist(); }
+  st.result = { win: false, over: o };
+  setPhase('result');
+  S.late(mood());
+  say(SAY.late, { silent: true });
+  WL.off();
+}
+function resume() {
+  if (!st.undo) return;
+  save = st.undo; st.undo = null; persist();
+  A.stop(); S.resume(st.moodRun);
+  st.result = null;
+  st.needFlat = st.mode === 'sensor';
+  WL.on();
+  setPhase('running');
+  say(st.mode === 'sensor' ? SAY.resume : SAY.resumeManual, { silent: true });
+  hint('');
+}
+function toIdle() {
+  clearTimeout(st.armTimer); clearInterval(st.cdTimer);
+  WL.off();
+  st.undo = null;
+  setPhase('idle');
+  idleSay(false);
+}
+function commit(res, leftMs) {
+  const s = save.stats, test = st.speed > 1;
+  s.lastAt = Date.now(); s.last = res;
+  if (res === 'win') {
+    s.streak++; s.failStreak = 0;
+    if (!test) { s.wins++; s.leftSum += Math.round(leftMs / 1000); s.best = Math.max(s.best, s.streak); }
+  } else { s.failStreak++; s.streak = 0; if (!test) s.fails++; }
+  if (!test) s.runs++;
+  save.hist.unshift({ t: s.lastAt, min: set().min, r: res, left: Math.round((leftMs || 0) / 1000), test: test ? 1 : 0 });
+  save.hist = save.hist.slice(0, 30);
+  persist();
+}
+
+/* ----- Sensor-Auswertung ----- */
+function onMotion(tilt, shake, down) {
+  const t = perf();
+  st.tilt = tilt; st.faceDown = down;
+  const flat = tilt < CFG.flatDeg && shake < CFG.calmMs2;
+  const lifted = tilt > CFG.liftDeg || shake > CFG.shakeMs2;
+  st.flatSince = flat ? (st.flatSince || t) : 0;
+  st.liftSince = lifted ? (st.liftSince || t) : 0;
+  const ph = st.phase;
+  app.classList.toggle('black', st.mode === 'sensor' && down && (ph === 'running' || ph === 'countdown' || ph === 'timeup'));
+  if (st.mode !== 'sensor') return;
+  if (ph === 'armed') { if (st.flatSince && t - st.flatSince >= CFG.flatHoldMs && t - st.tPhase > 300) countdown(); }
+  else if (ph === 'countdown') { if (st.liftSince && t - st.liftSince >= 150) abortCountdown(); }
+  else if (ph === 'running') {
+    if (st.needFlat) { if (st.flatSince && t - st.flatSince > 400) st.needFlat = false; }
+    else if (st.liftSince && t - st.liftSince >= CFG.liftHoldMs) finishEarly();
+  } else if (ph === 'timeup') { if (st.liftSince && t - st.liftSince >= CFG.liftHoldMs) finishLate(); }
+}
+
+/* ----- Takt: Zeitpunkte, Klänge, Ruhemodus ----- */
+let lastShift = 0, lastIdleTalk = 0;
+function tick() {
+  const ph = st.phase, t = perf();
+  if (ph === 'running' || ph === 'away') {
+    const el = elapsed(), p = el / st.durMs;
+    if (p >= 1) { timeUp(); return; }
+    if (ph === 'running') {
+      let fired = false;
+      if (set().half && !st.half && p >= CFG.halfAt) {
+        st.half = true; fired = true;
+        S.half(st.moodRun); st.halfFxUntil = t + 1200; R.react('half', 1200);
+        say(SAY.half, { silent: true, big: true }); wake(CFG.wakeMs); sayRunLater(4000);
+      }
+      if (set().hurry && !st.hurry && p >= CFG.hurryAt) {
+        st.hurry = true; fired = true;
+        S.hurry(st.moodRun); say(SAY.hurry, { silent: true, big: true }); wake(CFG.wakeMs); sayRunLater(4000);
+      }
+      const step = Math.floor(p * 10);
+      if (step > st.lastStep) { st.lastStep = step; if (!fired) S.step(step, st.moodRun); wake(CFG.wakeMs); }
+      if (set().final10 && st.speed === 1) {
+        const left = Math.ceil((st.durMs - el) / 1000);
+        if (left <= 10 && left < st.final) { st.final = left; S.tick(left); }
+      }
+    }
+  } else if (ph === 'timeup') {
+    if (t >= st.nagAt) { st.nagAt = t + CFG.nagEveryMs / (st.speed > 1 ? 10 : 1); S.nag(mood()); wake(CFG.wakeMs); }
+  } else if (ph === 'idle' && sheetEl.hidden && t - lastIdleTalk > 40000 && t - st.tPhase > 40000) {
+    lastIdleTalk = t; say(pick(SAY.idle[mood()]));
+  }
+  if ((ph === 'running' || ph === 'timeup') && t > st.dimAt && !app.classList.contains('dim')) app.classList.add('dim');
+  if (ph === 'result' && st.undo && t > st.undoUntil) { st.undo = null; ui(); }
+  renderTime();
+  if (t - lastShift > 60000) { // Schutz vor Einbrennen beim OLED
+    lastShift = t;
+    stage.style.transform = 'translate(' + Math.round(Math.random() * 6 - 3) + 'px,' + Math.round(Math.random() * 6 - 3) + 'px)';
+  }
+}
+setInterval(tick, 100);
+
+let lastDraw = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  if (ts - lastDraw < 33 || document.hidden) return;
+  lastDraw = ts;
+  const ph = st.phase, t = perf();
+  const m = (ph === 'running' || ph === 'away') ? st.moodRun : mood();
+  const info = { p: 0, count: st.count, since: t - st.tPhase, win: !!(st.result && st.result.win), halfFx: t < st.halfFxUntil, flash: t < st.flashUntil, look: [0, 0] };
+  if (ph === 'running' || ph === 'away') { info.p = clamp(elapsed() / st.durMs, 0, 1); info.look = R.lookAt(Math.min(9, Math.floor(info.p * 10))); }
+  R.draw(sheetEl.hidden ? ph : 'idle', m, t, info);
+}
+requestAnimationFrame(frame);
+
+/* ----- Bedienung ----- */
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  A.init();
+  set().min = +b.dataset.min; persist();
+  S.select(set().min);
+  renderChips(); renderTime();
+});
+$('#startBtn').addEventListener('click', arm);
+$('#goBtn').addEventListener('click', () => { A.init(); countdown(); });
+$('#noSensorBtn').addEventListener('click', () => { A.init(); st.mode = 'manual'; ui(); countdown(); });
+$('#cancelBtn').addEventListener('click', () => { A.stop(); S.abort(mood()); toIdle(); });
+$('#doneBtn').addEventListener('click', () => { if (st.phase === 'running') finishEarly(); else if (st.phase === 'timeup') finishLate(); });
+$('#abortBtn').addEventListener('click', () => { A.stop(); S.abort(st.moodRun); toIdle(); say(SAY.aborted, { silent: true }); });
+$('#againBtn').addEventListener('click', arm);
+$('#menuBtn').addEventListener('click', toIdle);
+$('#undoBtn').addEventListener('click', resume);
+$('#ring').addEventListener('click', () => {
+  if (st.phase !== 'idle') return;
+  A.init();
+  const m = mood();
+  st.poked = true;
+  S.poke(m); R.react('poke', 900);
+  say(pick(SAY.poke[m]), { silent: true });
+  if (m === 'verschlafen') { awake = true; setTimeout(() => { if (st.phase === 'idle') { idleSay(true); renderMood(); } }, 1700); }
+  else hint(idleHint());
+});
+app.addEventListener('pointerdown', () => { if (st.phase === 'running' || st.phase === 'timeup') wake(5000); });
+$('#awayWin').addEventListener('click', () => { awayEl.hidden = true; setPhase('running'); finishEarly(); });
+$('#awayGo').addEventListener('click', () => { awayEl.hidden = true; st.needFlat = st.mode === 'sensor'; setPhase('running'); say(st.mode === 'sensor' ? SAY.resume : SAY.resumeManual, { silent: true }); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (st.phase === 'running') st.away = true; return; }
+  if (st.phase === 'running' && st.away) { st.away = false; setPhase('away'); awayEl.hidden = false; S.back(st.moodRun); }
+});
+
+/* ----- Optionen, Klangtest, Statistik ----- */
+let sbMood = mood(), liveTimer = 0;
+const SB = [
+  ['COUNTDOWN', m => { S.count(3, m); setTimeout(() => S.count(2, m), 700); setTimeout(() => S.count(1, m), 1400); }],
+  ['START', m => S.start(m)],
+  ['LED-SCHRITT', m => S.step(4, m)],
+  ['HALBZEIT', m => S.half(m)],
+  ['ENDSPURT', m => S.hurry(m)],
+  ['LETZTE SEK.', () => { for (let i = 5; i > 0; i--) setTimeout(() => S.tick(i), (5 - i) * 500); }],
+  ['JUHU', m => S.win(m, 1)],
+  ['JUHU SERIE 5', m => S.win(m, 5)],
+  ['ZEIT UM', m => S.timeup(m)],
+  ['ERINNERUNG', m => S.nag(m)],
+  ['FEHLSTART', m => S.falseStart(m)],
+  ['STUPSEN', m => S.poke(m)],
+  ['TROTZDEM FERTIG', m => S.late(m)],
+  ['WIEDER DA', m => S.back(m)],
+  ['STOPP', () => A.stop()]
+];
+const CLIPNAMES = [['JUHU', 'juhu'], ['HIHI', 'hihi'], ['OHH', 'ohh'], ['HM?', 'hm'], ['UH-OH', 'uhoh'], ['GÄHN', 'gaehn'], ['LOS', 'los']];
+(() => {
+  const mb = $('#sbMood');
+  MOOD_KEYS.forEach(k => { const b = document.createElement('button'); b.type = 'button'; b.dataset.m = k; b.textContent = MOODS[k].label; mb.appendChild(b); });
+  const eb = $('#sbEvents');
+  SB.forEach(([label], i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.i = i; b.textContent = label; eb.appendChild(b); });
+  const cb = $('#sbClips');
+  CLIPNAMES.forEach(([label, name]) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.c = name; b.textContent = label; cb.appendChild(b); });
+})();
+function renderSettings() {
+  sheetEl.querySelectorAll('.seg[data-key]').forEach(seg => {
+    const v = String(set()[seg.dataset.key]);
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  });
+  $('#sbMood').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === sbMood));
+  const s = save.stats, avg = s.wins ? fmt(s.leftSum / s.wins * 1000, true) : '--:--';
+  $('#stats').innerHTML = '<span>Runden</span> ' + s.runs + '<br><span>Geschafft</span> ' + s.wins + '<br><span>Verpasst</span> ' + s.fails +
+    '<br><span>Serie</span> ' + s.streak + ' <span>· Rekord</span> ' + s.best + '<br><span>Ø übrig</span> ' + avg;
+  renderLive();
+}
+function renderLive() {
+  const sens = M.alive() && st.tilt != null
+    ? 'Neigung ' + Math.round(st.tilt) + '° · ' + (st.tilt < CFG.flatDeg ? 'flach' : st.tilt > CFG.liftDeg ? 'gekippt' : 'dazwischen') + (st.faceDown ? ' · Display unten' : '')
+    : 'Kein Sensor. In der Chat-Vorschau ist er gesperrt.';
+  $('#live').textContent = sens + '\nBildschirm wach halten: ' + WL.state() + '\nTon: ' + (A.ready ? (A.clipCount() + ' Stimmen geladen') : 'noch aus');
+}
+$('#optBtn').addEventListener('click', () => {
+  A.init(); M.permission().then(() => M.listen());
+  sbMood = mood();
+  sheetEl.hidden = false; renderSettings();
+  clearInterval(liveTimer); liveTimer = setInterval(renderLive, 250);
+});
+$('#closeBtn').addEventListener('click', () => { sheetEl.hidden = true; clearInterval(liveTimer); A.stop(); ui(); });
+sheetEl.addEventListener('click', e => {
+  const segBtn = e.target.closest('.seg[data-key] button');
+  if (segBtn) {
+    const key = segBtn.parentElement.dataset.key, raw = segBtn.dataset.v;
+    set()[key] = key === 'ring' ? raw : Number(raw);
+    persist(); A.init();
+    if (key === 'vol') A.setVol(set().vol);
+    S.click(); renderSettings(); ui();
+    return;
+  }
+  const mBtn = e.target.closest('#sbMood button');
+  if (mBtn) { sbMood = mBtn.dataset.m; S.click(); renderSettings(); return; }
+  const eBtn = e.target.closest('#sbEvents button');
+  if (eBtn) { A.init(); A.stop(); SB[+eBtn.dataset.i][1](sbMood); return; }
+  const cBtn = e.target.closest('#sbClips button');
+  if (cBtn) { A.init(); A.stop(); A.clip(cBtn.dataset.c, 0, sbMood, 0.9); }
+});
+$('#moodReset').addEventListener('click', () => {
+  const s = save.stats; s.streak = 0; s.failStreak = 0; s.last = ''; persist();
+  sbMood = mood(); S.click(); renderSettings(); ui();
+});
+let wipeArmed = 0;
+$('#wipeBtn').addEventListener('click', e => {
+  if (perf() - wipeArmed > 3000) { wipeArmed = perf(); e.currentTarget.textContent = 'SICHER? NOCHMAL'; setTimeout(() => { $('#wipeBtn').textContent = 'ALLES LÖSCHEN'; }, 3000); return; }
+  try { localStorage.removeItem(KEY); } catch (err) { /* egal */ }
+  save = clone(DEFAULTS); wipeArmed = 0; e.currentTarget.textContent = 'ALLES LÖSCHEN';
+  sbMood = mood(); A.setVol(set().vol); renderSettings(); ui();
+});
+
+/* ----- Als App installieren (nur in der Web-Version) ----- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#installBtn').hidden = false; });
+$('#installBtn').addEventListener('click', () => { if (installEvt) { installEvt.prompt(); installEvt = null; $('#installBtn').hidden = true; } });
+const inFrame = (() => { try { return window.top !== window.self; } catch (e) { return true; } })();
+const isWebApp = !!document.querySelector('link[rel="manifest"]');
+if ('serviceWorker' in navigator && isWebApp && (location.protocol === 'https:' || location.hostname === 'localhost') && !inFrame) {
+  const reg = () => navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (document.readyState === 'complete') reg(); else window.addEventListener('load', reg);
+}
+
+/* ----- Start ----- */
+window.__slappy = { st, A, R, S, mood, get save() { return save; }, skipTo(frac) { st.skip = frac * st.durMs - (Date.now() - st.startAt) * st.speed; } };
+setPhase('idle');
+idleSay(true);
+})();
+</script>
+</body>
+</html>
