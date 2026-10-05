@@ -1,5 +1,5 @@
 // SlappyTimer: macht die App offline nutzbar. Bei neuer Version CACHE hochzählen.
-const CACHE = 'slappy-v1';
+const CACHE = 'slappy-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', e => {

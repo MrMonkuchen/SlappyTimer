@@ -131,6 +131,7 @@ button{font-family:var(--font);cursor:pointer;-webkit-appearance:none;appearance
   <section class="panel" data-for="running timeup">
     <button class="btn big green" id="doneBtn" type="button">FERTIG!</button>
     <button class="btn ghost" id="abortBtn" type="button">ABBRECHEN</button>
+    <button class="btn ghost" id="giveUpBtn" type="button">AUFGEBEN</button>
   </section>
   <section class="panel" data-for="result">
     <button class="btn big" id="againBtn" type="button">NOCHMAL</button>
@@ -167,7 +168,7 @@ button{font-family:var(--font);cursor:pointer;-webkit-appearance:none;appearance
     <div class="stats" id="stats"></div>
     <div class="row"><button class="btn ghost" id="moodReset" type="button">LAUNE NEU</button><button class="btn ghost" id="wipeBtn" type="button">ALLES LÖSCHEN</button></div>
     <button class="btn ghost" id="installBtn" type="button" hidden>ALS APP INSTALLIEREN</button>
-    <div class="hint">SlappyTimer 0.1 · Prototyp für den Circuit Playground Bluefruit</div>
+    <div class="hint">SlappyTimer 0.2 · Prototyp für den Circuit Playground Bluefruit</div>
   </div>
 </div>
 
@@ -226,12 +227,12 @@ const SAY = {
     froh: ['Letztes Mal geschafft!', 'Das wird wieder was.', 'Gute Laune hier drin!'],
     schelmisch: ['Wetten, du schaffst es wieder?', 'Hehe. Noch eine Runde?', 'Wir zwei sind unschlagbar.'],
     bedrueckt: ['Letztes Mal war knapp.', 'Neue Runde, neues Glück?', 'Komm, wir versuchen es.'],
-    traurig: ['Ich vermisse das Juhu ...', 'Nur eine kleine Runde?', 'Ich glaub an dich. Echt.'],
+    traurig: ['Ich vermisse das Yahoo ...', 'Nur eine kleine Runde?', 'Ich glaub an dich. Echt.'],
     verschlafen: ['Zzz ... Oh! Da bist du ja!', 'Gähn ... Ich bin wach! Fast.']
   },
   poke: {
     neutral: ['Hm?', 'Ja?'], froh: ['Hihi, das kitzelt!'], schelmisch: ['Hehehe!', 'Erwischt!'],
-    bedrueckt: ['Hm ...'], traurig: ['Ohh ...'], verschlafen: ['Gääähn.']
+    bedrueckt: ['Hm ...'], traurig: ['Ohh ...'], verschlafen: ['Huch! Ich bin wach!']
   },
   armed: 'Leg mich flach hin.',
   armedManual: 'Hinlegen und LOS tippen.',
@@ -245,6 +246,7 @@ const SAY = {
   falseStartManual: 'Fehlstart! Nochmal LOS tippen.',
   timeup: { neutral: 'Zeit um!', froh: 'Uh-oh, Zeit um!', schelmisch: 'Uh-oh! Zeit um.', bedrueckt: 'Zeit um ...', traurig: 'Oh nein, Zeit um ...', verschlafen: 'Zeit um.' },
   late: 'Trotzdem geschafft! Nächstes Mal schneller?',
+  gaveUp: 'Aufgegeben. Nächstes Mal klappt es!',
   streak: { 2: 'Doppelpack!', 3: 'Hattrick!', 5: 'Fünf am Stück!', 7: 'Unaufhaltsam!', 10: 'Legende!' },
   resume: 'Okay, weiter! Leg mich wieder hin.',
   resumeManual: 'Okay, weiter geht es.',
@@ -481,24 +483,27 @@ const A = (() => {
 
   /* ----- Stimme: Formant-Synthese wie bei alten Sprachchips, danach als 8-Bit-Sample ----- */
   // Formanten F1-F3 in Hz (deutsche Laute, grob), Bandbreiten dazu
-  const VOW = { i: [280, 2250, 3000], e: [380, 2100, 2600], a: [750, 1250, 2600], o: [420, 760, 2500], u: [290, 750, 2300], m: [260, 1100, 2300], l: [380, 1200, 2700] };
+  const VOW = { i: [280, 2250, 3000], e: [380, 2100, 2600], a: [750, 1250, 2600], o: [420, 760, 2500], O: [570, 880, 2500], u: [290, 750, 2300], m: [260, 1100, 2300], l: [380, 1200, 2700] };
   const BW = [70, 100, 150];
   // Segmente: d Dauer, v Laut, to Gleiten zu, p Tonhöhe von/bis, g Stimme, n Hauchen (h), f Zischen (s), vib Vibrato
   const CLIPS = {
-    juhu: { base: 250, fs: 1.18, segs: [
-      { d: 0.07, v: 'i', to: 'u', p: [1, 1.05], g: 0.8 },
-      { d: 0.11, v: 'u', p: [1.05, 1.1], g: 1 },
-      { d: 0.04, v: 'u', g: 0 },
-      { d: 0.06, v: 'u', g: 0.08, n: 0.6, p: [1.25, 1.25] },
-      { d: 0.40, v: 'u', p: [1.25, 1.45], g: 1, vib: 1 },
-      { d: 0.14, v: 'u', p: [1.45, 1.2], g: 0.45 }] },
+    yahoo: { base: 300, fs: 1.2, vr: 7.5, bright: 2, segs: [
+      { d: 0.05, v: 'i', to: 'a', p: [1, 1.08], g: 0.9 },
+      { d: 0.12, v: 'a', p: [1.08, 1.2], g: 1 },
+      { d: 0.03, v: 'a', to: 'O', p: [1.2, 1.25], g: 0.5 },
+      { d: 0.05, v: 'O', g: 0.12, n: 0.75, p: [1.5, 1.5] },
+      { d: 0.08, v: 'O', p: [1.55, 1.85], g: 1 },
+      { d: 0.42, v: 'O', to: 'o', p: [1.85, 1.95], g: 1, vib: 55 },
+      { d: 0.10, v: 'o', to: 'u', p: [1.95, 2.15], g: 0.65 }] },
     hihi: { base: 300, fs: 1.25, segs: [0, 1, 2, 3].flatMap(k => [
       { d: 0.035, v: 'i', g: 0, n: 0.7 },
       { d: 0.075, v: 'i', p: [1.5 - k * 0.07, 1.42 - k * 0.07], g: 1 },
       { d: 0.045, v: 'i', g: 0 }]) },
-    ohh: { base: 210, fs: 1.1, segs: [
-      { d: 0.14, v: 'o', g: 0.1, n: 0.6 },
-      { d: 0.55, v: 'o', to: 'u', p: [1.08, 0.78], g: 0.9, vib: 1 }] },
+    ohh: { base: 220, fs: 1.1, segs: [
+      { d: 0.04, v: 'o', g: 0.15, n: 0.25 },
+      { d: 0.16, v: 'o', p: [1.05, 1.02], g: 0.9 },
+      { d: 0.04, v: 'o', p: [1.0, 0.86], g: 0.6 },
+      { d: 0.28, v: 'o', to: 'u', p: [0.86, 0.8], g: 0.85, vib: 30 }] },
     hm: { base: 230, fs: 1.1, segs: [
       { d: 0.05, v: 'm', g: 0, n: 0.4 },
       { d: 0.30, v: 'm', p: [1, 1.35], g: 0.9 }] },
@@ -506,10 +511,6 @@ const A = (() => {
       { d: 0.17, v: 'a', to: 'o', p: [1.32, 1.3], g: 1 },
       { d: 0.07, v: 'o', g: 0 },
       { d: 0.32, v: 'o', p: [1.02, 0.9], g: 1, vib: 1 }] },
-    gaehn: { base: 190, fs: 1.1, segs: [
-      { d: 0.12, v: 'a', g: 0.12, n: 0.5 },
-      { d: 0.50, v: 'a', p: [0.95, 1.35], g: 0.85 },
-      { d: 0.40, v: 'a', to: 'm', p: [1.35, 0.8], g: 0.75 }] },
     los: { base: 260, fs: 1.15, segs: [
       { d: 0.05, v: 'l', to: 'o', p: [1.2, 1.25], g: 0.7 },
       { d: 0.17, v: 'o', p: [1.25, 1.35], g: 1 },
@@ -539,8 +540,14 @@ const A = (() => {
     const hp = oc.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4200; hp.Q.value = -3;
     const fsx = oc.createGain(); fsx.gain.value = 3;
     nz.connect(fg); fg.connect(hp); hp.connect(fsx); fsx.connect(oc.destination);
+    // etwas rohe Stimme obendrauf = gerufen statt gesungen
+    if (spec.bright) {
+      const hb = oc.createBiquadFilter(), bg = oc.createGain();
+      hb.type = 'highpass'; hb.frequency.value = 1400; hb.Q.value = -3; bg.gain.value = spec.bright;
+      vg.connect(hb); hb.connect(bg); bg.connect(oc.destination);
+    }
     const lfo = oc.createOscillator(), lg = oc.createGain();
-    lfo.frequency.value = 6.5; lg.gain.value = 0; lfo.connect(lg); lg.connect(osc.detune);
+    lfo.frequency.value = spec.vr || 6.5; lg.gain.value = 0; lfo.connect(lg); lg.connect(osc.detune);
     let t = 0.02, prevF = null, pv = 0, pn = 0, pf = 0;
     const fs = spec.fs;
     for (const s of spec.segs) {
@@ -560,7 +567,7 @@ const A = (() => {
       ng.gain.setValueAtTime(pn, t); ng.gain.linearRampToValueAtTime(gn, t + 0.01); pn = gn;
       fg.gain.setValueAtTime(pf, t); fg.gain.linearRampToValueAtTime(gf, t + 0.015); pf = gf;
       lg.gain.setValueAtTime(0, t);
-      if (s.vib) lg.gain.linearRampToValueAtTime(35, t + s.d * 0.7);
+      if (s.vib) lg.gain.linearRampToValueAtTime(s.vib === 1 ? 35 : s.vib, t + s.d * 0.7);
       t += s.d;
     }
     vg.gain.setValueAtTime(pv, t); vg.gain.linearRampToValueAtTime(0, t + 0.04);
@@ -624,7 +631,7 @@ const S = {
   start(m) {
     const t = A.now() + 0.03;
     let t1 = t;
-    if (m === 'verschlafen') t1 = A.clip('gaehn', t, m, 0.7) - 0.1;
+    if (m === 'verschlafen') t1 = S.wake(m) + 0.05;
     else if (!MOODS[m].minor) { A.clip('los', t, m, 0.9); t1 = t + 0.32; }
     const end = A.play([
       { lead: 1, n: 'G4:16 C5:16 E5:16 G5:8. E5:16 G5:8 C6:4', bpm: 168, v: 0.2 },
@@ -663,12 +670,15 @@ const S = {
   tick(left) { return A.tone({ wave: 'p50', f: A.hz(84 + (10 - left)), dur: 0.03, vol: 0.055, env: { a: 0.001, d: 0.03, s: 0, r: 0.01 } }); },
   win(m, streak) {
     const t = A.now() + 0.03, M = MOODS[m];
-    const turn = M.minor || m === 'verschlafen';   // traurig gewesen: erst "Hm?", dann JUHU
+    const turn = M.minor || m === 'verschlafen';   // traurig gewesen: erst "Hm?", dann YAHOO
     let tj = t;
     if (turn) { A.clip('hm', t, 'neutral', 0.6); tj = t + 0.42; }
     const fm = turn ? 'froh' : m;
-    A.clip('juhu', tj, fm, 1);
-    const tf = tj + 0.66;
+    A.clip('yahoo', tj, fm, 1);
+    // 8-Bit-Sprung unter dem "HOO" für mehr Schwung
+    A.tone({ wave: 'p25', f: 330, to: 1320, t: tj + 0.23, dur: 0.22, vol: 0.09, env: { a: 0.003, d: 0.05, s: 0.8, r: 0.04 } });
+    A.tone({ wave: 'p12', f: A.hz(84), arp: [0, 4, 7, 12, 16], arpStep: 1 / 45, t: tj + 0.5, dur: 0.3, vol: 0.06, env: { a: 0.002, d: 0.28, s: 0.3, r: 0.05 } });
+    const tf = tj + 0.76;
     let end = A.play([
       { lead: 1, n: 'G5:16 G5:16 C6:8 E6:8. D6:16 C6:16 D6:16 E6:4.', bpm: 160, v: 0.19 },
       { w: 'p50', n: 'E5:16 E5:16 G5:8 C6:8. B5:16 A5:16 B5:16 C6:4.', bpm: 160, v: 0.1 },
@@ -717,10 +727,27 @@ const S = {
       case 'schelmisch': return A.clip('hihi', t, m, 0.8);
       case 'bedrueckt': return A.clip('hm', t, m, 0.7);
       case 'traurig': return A.clip('ohh', t, m, 0.7);
-      case 'verschlafen': return A.clip('gaehn', t, m, 0.7);
+      case 'verschlafen': return S.wake(m);
       default: A.clip('hm', t, m, 0.8); return A.play([{ lead: 1, n: 'G5:32 C6:16', bpm: 150, v: 0.1 }], m, { t: t + 0.32 });
     }
   },
+  // Schnarchen: Rattern beim Einatmen, Pfeifen beim Ausatmen
+  snore(m, vol = 1) {
+    const t = A.now() + 0.02;
+    A.tone({ wave: 'tri', f: 72, to: 84, t, dur: 0.45, vol: 0.2 * vol, vib: { rate: 24, depth: 140, delay: 0 }, env: { a: 0.12, d: 0.1, s: 0.85, r: 0.08 } });
+    for (let i = 0; i < 9; i++) A.tone({ wave: 'noise', rate: 0.22, t: t + 0.05 + i * 0.045, dur: 0.028, vol: (0.05 + i * 0.008) * vol, env: { a: 0.003, d: 0.02, s: 0.5, r: 0.01 } });
+    const t2 = t + 0.62;
+    A.tone({ wave: 'sine', f: 1600, to: 1050, t: t2, dur: 0.38, vol: 0.07 * vol, env: { a: 0.06, d: 0.1, s: 0.7, r: 0.1 } });
+    return t2 + 0.5;
+  },
+  // Aufwachen: Boing, dann "Hm?"
+  wake(m) {
+    const t = A.now() + 0.02;
+    A.tone({ wave: 'tri', f: 220, to: 880, t, dur: 0.12, vol: 0.28, env: { a: 0.002, d: 0.05, s: 0.9, r: 0.02 } });
+    A.tone({ wave: 'p25', f: 880, to: 660, t: t + 0.13, dur: 0.2, vol: 0.11, vib: { rate: 18, depth: 70, delay: 0 } });
+    return A.clip('hm', t + 0.36, 'neutral', 0.75);
+  },
+  giveUp(m) { return A.play([{ lead: 1, n: 'E5:8 C5:8 A4:4', bpm: 120, v: 0.15 }, { w: 'tri', n: 'C4:8 A3:8 F3:4', bpm: 120, v: 0.2 }], m, { sigh: true }); },
   back(m) { const t = A.now() + 0.02; A.clip('hm', t, m, 0.8); return A.play([{ lead: 1, n: 'C5:16 G5:8', bpm: 160, v: 0.14 }], m, { t: t + 0.35 }); },
   abort(m) { return A.play([{ lead: 1, n: 'G5:16 C5:8', bpm: 180, v: 0.14 }], m); },
   resume(m) { return A.play([{ lead: 1, n: 'C5:16 E5:16 G5:8', bpm: 180, v: 0.15 }], m); },
@@ -794,17 +821,19 @@ const R = (() => {
         break;
       case 'running': case 'away': {
         const p = info.p, drain = set().ring === 'drain';
-        const n = (drain ? 1 - p : p) * N, full = Math.floor(n), frac = n - full;
+        const n = p * N, full = Math.floor(n), frac = n - full;
         const hurry = p >= CFG.hurryAt, breathe = 0.85 + 0.15 * Math.sin(t / 1600 * 2 * Math.PI);
-        const ct = t % 6000, cp = ct < 1000 ? ct / 1000 * (full + 1.5) : -9;  // Lebenszeichen: Lichtblitz läuft über den Ring
+        // Füllen: Licht wandert im Uhrzeigersinn dazu. Leeren: Dunkel wandert im Uhrzeigersinn hinterher.
+        const lo = drain ? full : 0, hi = drain ? N - 1 : full;
+        const ct = t % 6000, cp = ct < 1000 ? lo + ct / 1000 * (hi - lo + 1.5) : -9;  // Lebenszeichen: Lichtblitz läuft über die leuchtenden LEDs
         for (let k = 0; k < N; k++) {
           let col = drain ? grad(p) : grad(k / (N - 1)), b = 0;
-          if (k < full) b = 0.85;
+          if (drain ? k > full : k < full) b = 0.85;
           else if (k === full) {
-            b = (drain ? frac * 0.85 : 0.08 + 0.77 * frac) * breathe;
+            b = (drain ? (1 - frac) * 0.85 : 0.08 + 0.77 * frac) * breathe;
             if (hurry && (t % 500) < 250) { b = 0.95; col = [228, 0, 60]; }
           }
-          if (k <= full) { const d = Math.abs(cp - k); if (d < 1) col = col.map(v => v + (255 - v) * 0.55 * (1 - d)); }
+          if (k >= lo && k <= hi) { const d = Math.abs(cp - k); if (d < 1) col = col.map(v => v + (255 - v) * 0.55 * (1 - d)); }
           out.push(L(col.map(v => v | 0), b));
         }
         if (info.halfFx && (t % 250) < 125) for (const o of out) if (o.b > 0.05) { o.c = [255, 255, 255]; o.b = 1; }
@@ -823,7 +852,8 @@ const R = (() => {
             if (fast && rnd(k, Math.floor(t / 90)) > 0.85) col = [255, 255, 255];
             out.push(L(col, fast ? 0.9 : 0.45));
           }
-        } else for (let k = 0; k < N; k++) out.push(L(grad(0.15 + 0.7 * k / (N - 1)), 0.35));
+        } else if (info.gaveUp) for (let k = 0; k < N; k++) out.push(L(c, 0.06 + 0.08 * (0.5 + 0.5 * Math.sin(t / 3000 * 2 * Math.PI))));
+        else for (let k = 0; k < N; k++) out.push(L(grad(0.15 + 0.7 * k / (N - 1)), 0.35));
         break;
       case 'icon':
         for (let k = 0; k < N; k++) out.push(L(grad(k / (N - 1)), 1));
@@ -934,7 +964,7 @@ const R = (() => {
       case 'timeup': return { eye: MOODS[m].minor ? 'open' : 'x', mouth: 'frown', brow: 'sad', tear: Math.floor((t % 2000) / 400) };
       case 'result':
         if (info.win) { const star = (t % 1600) < 800; return { eye: star ? 'star' : 'happy', mouth: 'grin', blush: 1, dy: hop(t, 500), tint: star ? '#f8d800' : null }; }
-        return { eye: 'open', mouth: 'smile', brow: 'sad' };
+        return info.gaveUp ? { eye: 'open', mouth: 'flat', brow: 'sad', look: [0, 1] } : { eye: 'open', mouth: 'smile', brow: 'sad' };
       case 'icon': return { eye: 'open', mouth: 'grin', blush: 1, look: [0, 0], noBlink: 1 };
       default:
         switch (m) {
@@ -981,7 +1011,7 @@ const R = (() => {
     drawFace(faceFor(ph, m, t, info), t);
   }
   function icon() { react = null; draw('icon', 'froh', 0, { p: 1, look: [0, 0] }); return cv.toDataURL('image/png'); }
-  return { draw, react: setReact, lookAt, icon };
+  return { draw, react: setReact, lookAt, icon, ledsFor };
 })();
 
 /* =====================================================================
@@ -1055,6 +1085,7 @@ function ui() {
   $('#noSensorBtn').hidden = man;
   $('#doneBtn').hidden = !man;
   $('#abortBtn').hidden = ph !== 'running';
+  $('#giveUpBtn').hidden = ph !== 'timeup';
   $('#undoBtn').hidden = !(st.undo && perf() < st.undoUntil);
   $('#optBtn').style.visibility = (ph === 'idle' || ph === 'result') ? 'visible' : 'hidden';
   app.classList.toggle('noTime', !set().showTime && ph === 'running');
@@ -1094,7 +1125,7 @@ function renderTime() {
   else if (ph === 'result' && st.result) {
     const r = st.result;
     txt = r.win ? fmt(r.left) : '+' + fmt(r.over, true);
-    sub = r.win ? 'ÜBRIG · ' + fmt(r.used, true) + ' GEBRAUCHT' : 'DRÜBER · TROTZDEM FERTIG';
+    sub = r.win ? 'ÜBRIG · ' + fmt(r.used, true) + ' GEBRAUCHT' : (r.gaveUp ? 'DRÜBER · AUFGEGEBEN' : 'DRÜBER · TROTZDEM FERTIG');
   } else {
     txt = fmt(set().min * 60000);
     if (ph === 'armed' && st.mode === 'sensor') sub = M.alive() && st.tilt != null ? 'NEIGUNG ' + Math.round(st.tilt) + '°' : 'WARTE AUF SENSOR ...';
@@ -1193,7 +1224,7 @@ function finishEarly() {
   setPhase('result');
   S.win(st.moodRun, save.stats.streak);
   const sk = SAY.streak[save.stats.streak] || (save.stats.streak > 1 ? 'Serie: ' + save.stats.streak + '!' : '');
-  say('JUHU!' + (sk ? ' ' + sk : ''), { silent: true, big: true });
+  say('YAHOO!' + (sk ? ' ' + sk : ''), { silent: true, big: true });
   hint(moodLine(st.moodRun, now));
   WL.off();
 }
@@ -1223,6 +1254,18 @@ function finishLate() {
   setPhase('result');
   S.late(mood());
   say(SAY.late, { silent: true });
+  hint('Laune: ' + MOODS[mood()].label.toLowerCase());
+  WL.off();
+}
+function giveUp() {
+  const o = over();
+  A.stop();
+  if (save.hist[0]) { save.hist[0].over = Math.round(o / 1000); save.hist[0].gaveUp = 1; persist(); }
+  st.result = { win: false, over: o, gaveUp: true };
+  setPhase('result');
+  S.giveUp(mood());
+  say(SAY.gaveUp, { silent: true });
+  hint('Laune: ' + MOODS[mood()].label.toLowerCase());
   WL.off();
 }
 function resume() {
@@ -1303,7 +1346,9 @@ function tick() {
   } else if (ph === 'timeup') {
     if (t >= st.nagAt) { st.nagAt = t + CFG.nagEveryMs / (st.speed > 1 ? 10 : 1); S.nag(mood()); wake(CFG.wakeMs); }
   } else if (ph === 'idle' && sheetEl.hidden && t - lastIdleTalk > 40000 && t - st.tPhase > 40000) {
-    lastIdleTalk = t; say(pick(SAY.idle[mood()]));
+    lastIdleTalk = t;
+    if (mood() === 'verschlafen') { if (A.ready && set().vol > 0) S.snore('verschlafen', 0.6); say('Zzz ...', { silent: true }); }
+    else say(pick(SAY.idle[mood()]));
   }
   if ((ph === 'running' || ph === 'timeup') && t > st.dimAt && !app.classList.contains('dim')) app.classList.add('dim');
   if (ph === 'result' && st.undo && t > st.undoUntil) { st.undo = null; ui(); }
@@ -1322,7 +1367,7 @@ function frame(ts) {
   lastDraw = ts;
   const ph = st.phase, t = perf();
   const m = (ph === 'running' || ph === 'away') ? st.moodRun : mood();
-  const info = { p: 0, count: st.count, since: t - st.tPhase, win: !!(st.result && st.result.win), halfFx: t < st.halfFxUntil, flash: t < st.flashUntil, look: [0, 0] };
+  const info = { p: 0, count: st.count, since: t - st.tPhase, win: !!(st.result && st.result.win), gaveUp: !!(st.result && st.result.gaveUp), halfFx: t < st.halfFxUntil, flash: t < st.flashUntil, look: [0, 0] };
   if (ph === 'running' || ph === 'away') { info.p = clamp(elapsed() / st.durMs, 0, 1); info.look = R.lookAt(Math.min(9, Math.floor(info.p * 10))); }
   R.draw(sheetEl.hidden ? ph : 'idle', m, t, info);
 }
@@ -1342,6 +1387,7 @@ $('#noSensorBtn').addEventListener('click', () => { A.init(); st.mode = 'manual'
 $('#cancelBtn').addEventListener('click', () => { A.stop(); S.abort(mood()); toIdle(); });
 $('#doneBtn').addEventListener('click', () => { if (st.phase === 'running') finishEarly(); else if (st.phase === 'timeup') finishLate(); });
 $('#abortBtn').addEventListener('click', () => { A.stop(); S.abort(st.moodRun); toIdle(); say(SAY.aborted, { silent: true }); });
+$('#giveUpBtn').addEventListener('click', giveUp);
 $('#againBtn').addEventListener('click', arm);
 $('#menuBtn').addEventListener('click', toIdle);
 $('#undoBtn').addEventListener('click', resume);
@@ -1372,17 +1418,20 @@ const SB = [
   ['HALBZEIT', m => S.half(m)],
   ['ENDSPURT', m => S.hurry(m)],
   ['LETZTE SEK.', () => { for (let i = 5; i > 0; i--) setTimeout(() => S.tick(i), (5 - i) * 500); }],
-  ['JUHU', m => S.win(m, 1)],
-  ['JUHU SERIE 5', m => S.win(m, 5)],
+  ['YAHOO', m => S.win(m, 1)],
+  ['YAHOO SERIE 5', m => S.win(m, 5)],
   ['ZEIT UM', m => S.timeup(m)],
   ['ERINNERUNG', m => S.nag(m)],
   ['FEHLSTART', m => S.falseStart(m)],
   ['STUPSEN', m => S.poke(m)],
   ['TROTZDEM FERTIG', m => S.late(m)],
   ['WIEDER DA', m => S.back(m)],
+  ['AUFGEBEN', m => S.giveUp(m)],
+  ['SCHNARCHEN', m => S.snore(m)],
+  ['AUFWACHEN', m => S.wake(m)],
   ['STOPP', () => A.stop()]
 ];
-const CLIPNAMES = [['JUHU', 'juhu'], ['HIHI', 'hihi'], ['OHH', 'ohh'], ['HM?', 'hm'], ['UH-OH', 'uhoh'], ['GÄHN', 'gaehn'], ['LOS', 'los']];
+const CLIPNAMES = [['YAHOO', 'yahoo'], ['HIHI', 'hihi'], ['OHH', 'ohh'], ['HM?', 'hm'], ['UH-OH', 'uhoh'], ['LOS', 'los']];
 (() => {
   const mb = $('#sbMood');
   MOOD_KEYS.forEach(k => { const b = document.createElement('button'); b.type = 'button'; b.dataset.m = k; b.textContent = MOODS[k].label; mb.appendChild(b); });

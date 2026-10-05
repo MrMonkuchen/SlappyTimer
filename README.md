@@ -9,8 +9,8 @@ Am Handy in Chrome öffnen, dann Menü > "App installieren".
 | Aktion | Ergebnis |
 |---|---|
 | Zeit wählen, START, Handy flach hinlegen | 3, 2, 1, los |
-| Vor Ablauf hochnehmen | Juhu |
-| Zeit abgelaufen | Nachspielzeit mit Erinnerungen |
+| Vor Ablauf hochnehmen | Yahoo |
+| Zeit abgelaufen | Nachspielzeit, dann hochnehmen oder AUFGEBEN |
 | OPT | Klangtest, Schnelltest, Statistik |
 
 Slappys Laune hängt von der letzten Runde ab: froh, schelmisch, bedrückt, traurig oder verschlafen.
